@@ -1,5 +1,5 @@
 import app from './app';
-import { env } from '@config/env';
+import { env } from './config/env';
 import { initializeDatabase } from '@config/database';
 import { connectRedis } from '@config/redis';
 import { logger } from '@config/logger';
