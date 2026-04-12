@@ -43,7 +43,7 @@ app.use('/uploads', express.static(path.join(publicPath, 'uploads'), {
 app.use(requestLogger);
 
 // API Routes
-app.use('/api/v1', v1Routes);
+app.use('/v1', v1Routes);
 
 // 404 and Error Handling
 app.use(notFoundHandler);
