@@ -5,7 +5,7 @@ import helmet from 'helmet';
 import compression from 'compression';
 import cookieParser from 'cookie-parser';
 import morgan from 'morgan';
-import { env } from '../src/config/env';
+import { env } from '@config/env';
 import { errorHandler, notFoundHandler } from '@middleware/error.middleware';
 import { requestLogger } from '@middleware/logger.middleware';
 import v1Routes from '@api/v1/routes';
