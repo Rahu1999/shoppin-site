@@ -177,7 +177,7 @@ export default function Home() {
       </section>
 
       {/* 5. Promotional Big Banner */}
-      <section className="container mx-auto px-4 lg:px-8 py-24">
+      {/* <section className="container mx-auto px-4 lg:px-8 py-24">
          <div className="relative rounded-[3.5rem] overflow-hidden bg-[#0F172A] p-12 lg:p-24 shadow-[0_50px_100px_rgba(0,0,0,0.3)]">
             <div className="absolute top-0 right-0 w-1/2 h-full bg-gradient-to-l from-primary/20 to-transparent z-10" />
             <div className="absolute -top-24 -right-24 w-96 h-96 bg-indigo-500 rounded-full blur-[120px] opacity-20" />
@@ -205,7 +205,7 @@ export default function Home() {
                </div>
             </div>
          </div>
-      </section>
+      </section> */}
 
       {/* 6. Best Sellers Carousel */}
       <section className="py-24 bg-slate-50 overflow-hidden">
@@ -287,7 +287,7 @@ export default function Home() {
       </section>
 
       {/* 8. Elite Testimonials */}
-      <section className="py-24 bg-slate-50 overflow-hidden">
+      {/* <section className="py-24 bg-slate-50 overflow-hidden">
         <div className="container mx-auto px-4 lg:px-8 text-center mb-16">
            <h2 className="text-4xl lg:text-5xl font-black text-slate-900 tracking-tighter uppercase italic leading-tight">Voices of the Elite</h2>
         </div>
@@ -317,14 +317,13 @@ export default function Home() {
               ))}
            </div>
         </div>
-      </section>
+      </section> */}
 
       {/* 9. Premium Newsletter Section */}
-      <section className="py-32 relative overflow-hidden">
+      {/* <section className="py-32 relative overflow-hidden">
         <div className="absolute top-1/2 left-0 w-full h-px bg-slate-200 -z-10" />
         <div className="container mx-auto px-4 lg:px-8">
            <div className="max-w-4xl mx-auto bg-primary rounded-[3.5rem] p-12 lg:p-20 text-center relative shadow-[0_50px_100px_rgba(37,99,235,0.2)] overflow-hidden">
-              {/* Patterns */}
               <div className="absolute top-0 right-0 w-64 h-64 bg-white/10 rounded-full blur-3xl -translate-y-1/2 translate-x-1/2" />
               <div className="absolute bottom-0 left-0 w-64 h-64 bg-indigo-400/20 rounded-full blur-3xl translate-y-1/2 -translate-x-1/2" />
               
@@ -352,7 +351,7 @@ export default function Home() {
               </div>
            </div>
         </div>
-      </section>
+      </section> */}
       
     </div>
   );
