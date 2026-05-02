@@ -5,12 +5,12 @@ import { apiGet } from '@/services/apiClient';
 import { Package, Clock, CheckCircle2, AlertCircle, ChevronRight, Search, FileText } from 'lucide-react';
 import Link from 'next/link';
 import Image from 'next/image';
-import { useSettingsStore } from '@/store/settingsStore';
+
 import { formatPrice } from '@/utils/price';
 import { Button } from '@/components/ui/Button';
 
 export default function OrdersPage() {
-  const { currency, exchangeRate } = useSettingsStore();
+
   const { data, isLoading } = useQuery({
     queryKey: ['orders'],
     queryFn: () => apiGet<any>('/orders'),
@@ -82,7 +82,7 @@ export default function OrdersPage() {
                     </div>
                     <div>
                       <p className="text-slate-400 font-bold uppercase tracking-widest text-[10px] mb-1">Total</p>
-                      <p className="font-bold text-slate-900 text-base">{formatPrice(Number(order.totalAmount), currency, exchangeRate)}</p>
+                      <p className="font-bold text-slate-900 text-base">{formatPrice(Number(order.totalAmount))}</p>
                     </div>
                     <div className="col-span-2 sm:col-span-1">
                       <p className="text-slate-400 font-bold uppercase tracking-widest text-[10px] mb-1">Order ID</p>

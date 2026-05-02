@@ -1,29 +1,28 @@
 export const theme = {
-  // Brand colors
-  primaryColor: '#2563EB', // Blue 600
-  secondaryColor: '#0F172A', // Slate 900
-  accentColor: '#F59E0B', // Amber 500
+  // Rajesh Industries — Steel Brand Colors
+  primaryColor: '#1C1C1E',    // Near-black steel
+  secondaryColor: '#374151',  // Dark gray
+  accentColor: '#6B7280',     // Cool gray
 
   // Danger/Success
-  dangerColor: '#EF4444', // Red 500
-  successColor: '#10B981', // Emerald 500
-  
+  dangerColor: '#EF4444',
+  successColor: '#10B981',
+
   // Backgrounds
   backgroundColor: '#FFFFFF',
-  surfaceColor: '#F8FAFC',
-  
+  surfaceColor: '#F9FAFB',
+
   // Typography
-  fontFamilySans: 'var(--font-inter)',
-  fontFamilyMono: 'var(--font-roboto-mono)',
-  textColorBase: '#1E293B',
-  textColorMuted: '#64748B',
+  fontFamilySans: "'DM Sans', 'Inter', sans-serif",
+  textColorBase: '#111827',
+  textColorMuted: '#6B7280',
 
   // Layout & UI
-  borderRadius: '0.75rem',     // 12px
-  buttonRadius: '0.5rem',      // 8px
-  cardRadius: '1rem',          // 16px
-  inputRadius: '0.375rem',     // 6px
+  borderRadius: '0.75rem',
+  buttonRadius: '0.5rem',
+  cardRadius: '1rem',
+  inputRadius: '0.375rem',
 
-  logo: '/logo.svg', // Assumes logo.svg exists in public/
-  storeName: 'ModernShop',
+  logo: '/logo.svg',
+  storeName: 'Rajesh Industries',
 } as const;

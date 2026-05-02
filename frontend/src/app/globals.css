@@ -1,3 +1,4 @@
+@import url('https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;0,9..40,600;0,9..40,700;1,9..40,400&display=swap');
 @import "tailwindcss";
 
 @theme {
@@ -18,17 +19,17 @@
 }
 
 :root {
-  /* Mapped directly from our config/theme.ts values */
-  --color-primary: #2563EB;
-  --color-secondary: #0F172A;
-  --color-accent: #F59E0B;
+  /* Rajesh Industries — Steel & Minimal Palette */
+  --color-primary: #1C1C1E;       /* Near-black steel */
+  --color-secondary: #374151;     /* Dark gray */
+  --color-accent: #6B7280;        /* Cool gray */
   --color-danger: #EF4444;
   --color-success: #10B981;
 
-  --color-background: #ffffff;
-  --color-surface: #F8FAFC;
-  --color-foreground: #1E293B;
-  --color-muted: #64748B;
+  --color-background: #FFFFFF;
+  --color-surface: #F9FAFB;
+  --color-foreground: #111827;
+  --color-muted: #6B7280;
 
   --radius-lg: 1rem;
   --radius-md: 0.75rem;
@@ -38,27 +39,25 @@
 body {
   background-color: var(--color-background);
   color: var(--color-foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  font-family: 'DM Sans', 'Inter', Arial, sans-serif;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
 }
 
-/* Ensure nice smooth scroll */
 html {
   scroll-behavior: smooth;
 }
 
 /* Scrollbar styling */
-::-webkit-scrollbar {
-  width: 8px;
-}
-::-webkit-scrollbar-track {
-  background: var(--color-surface);
-}
-::-webkit-scrollbar-thumb {
-  background: var(--color-muted);
-  border-radius: 4px;
-}
-::-webkit-scrollbar-thumb:hover {
-  background: var(--color-secondary);
-}
+::-webkit-scrollbar { width: 6px; }
+::-webkit-scrollbar-track { background: var(--color-surface); }
+::-webkit-scrollbar-thumb { background: #D1D5DB; border-radius: 4px; }
+::-webkit-scrollbar-thumb:hover { background: var(--color-accent); }
+
+/* Utility: hide scrollbar but keep scroll */
+.hide-scrollbar::-webkit-scrollbar { display: none; }
+.hide-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+
+/* Section padding utility */
+.section-padding { padding-top: 4rem; padding-bottom: 4rem; }
+@media (min-width: 768px) { .section-padding { padding-top: 6rem; padding-bottom: 6rem; } }

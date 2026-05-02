@@ -7,7 +7,7 @@ import { Button } from '@/components/ui/Button';
 import { X, Minus, Plus, ShoppingBag, ArrowRight } from 'lucide-react';
 import Link from 'next/link';
 import Image from 'next/image';
-import { useSettingsStore } from '@/store/settingsStore';
+
 import { formatPrice } from '@/utils/price';
 
 interface CartDrawerProps {
@@ -19,7 +19,7 @@ export function CartDrawer({ isOpen, onClose }: CartDrawerProps) {
   // We use the hook to ensure React Query fetches the latest if stale.
   useFetchCart();
   const { items, total } = useCartStore();
-  const { currency, exchangeRate } = useSettingsStore();
+
   const updateQuantity = useUpdateCartItem();
   const removeItem = useRemoveCartItem();
 
@@ -74,7 +74,7 @@ export function CartDrawer({ isOpen, onClose }: CartDrawerProps) {
                       {item.product?.name}
                     </h4>
                     <p className="text-primary font-bold mt-1">
-                      {formatPrice(Number(item.price), currency, exchangeRate)}
+                      {formatPrice(Number(item.price))}
                     </p>
                   </div>
 
@@ -119,7 +119,7 @@ export function CartDrawer({ isOpen, onClose }: CartDrawerProps) {
               <div className="flex justify-between text-sm text-slate-600">
                 <span>Subtotal</span>
                 <span className="font-semibold text-slate-900">
-                  {formatPrice(total, currency, exchangeRate)}
+                  {formatPrice(total)}
                 </span>
               </div>
               <p className="text-xs text-slate-500">Shipping and taxes calculated at checkout.</p>

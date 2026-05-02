@@ -6,7 +6,7 @@ import { Button } from '@/components/ui/Button';
 import { Minus, Plus, Trash2, ArrowRight, ShieldCheck, Tag, ShoppingBag } from 'lucide-react';
 import Link from 'next/link';
 import Image from 'next/image';
-import { useSettingsStore } from '@/store/settingsStore';
+
 import { formatPrice } from '@/utils/price';
 
 export default function CartPage() {
@@ -14,7 +14,7 @@ export default function CartPage() {
   const { items, total } = useCartStore();
   const updateQuantity = useUpdateCartItem();
   const removeItem = useRemoveCartItem();
-  const { currency, exchangeRate } = useSettingsStore();
+
 
   if (items.length === 0) {
     return (
@@ -72,7 +72,7 @@ export default function CartPage() {
                           {item.product?.name}
                         </Link>
                         <p className="font-semibold text-slate-500 mt-2">
-                           {formatPrice(Number(item.price), currency, exchangeRate)} <span className="text-xs font-medium opacity-50 block sm:inline mt-1 sm:mt-0">each</span>
+                           {formatPrice(Number(item.price))} <span className="text-xs font-medium opacity-50 block sm:inline mt-1 sm:mt-0">each</span>
                         </p>
                       </div>
                     </div>
@@ -105,7 +105,7 @@ export default function CartPage() {
                     <div className="sm:col-span-3 flex justify-between sm:justify-end items-center sm:items-end flex-row sm:flex-col gap-2">
                       <span className="sm:hidden font-semibold text-slate-400 text-xs uppercase tracking-widest">Total</span>
                       <div className="text-right font-black text-slate-900 text-lg">
-                        {formatPrice(Number(item.price) * item.quantity, currency, exchangeRate)}
+                        {formatPrice(Number(item.price) * item.quantity)}
                       </div>
                       
                       {/* Desktop Remove Button */}
@@ -139,7 +139,7 @@ export default function CartPage() {
               <dl className="space-y-5 text-sm">
                 <div className="flex justify-between items-center text-slate-600">
                   <dt className="font-medium">Subtotal ({items.length} items)</dt>
-                  <dd className="font-bold text-slate-900">{formatPrice(total, currency, exchangeRate)}</dd>
+                  <dd className="font-bold text-slate-900">{formatPrice(total)}</dd>
                 </div>
                 <div className="flex justify-between items-center text-slate-600">
                   <dt className="font-medium">Estimated Shipping</dt>
@@ -164,7 +164,7 @@ export default function CartPage() {
                 <div className="border-t border-slate-100 pt-5 mt-5 flex justify-between items-end">
                   <dt className="text-base font-bold text-slate-900">Estimated Total</dt>
                   <div className="text-right">
-                    <dd className="text-3xl font-black text-primary tracking-tight">{formatPrice(total, currency, exchangeRate)}</dd>
+                    <dd className="text-3xl font-black text-primary tracking-tight">{formatPrice(total)}</dd>
                   </div>
                 </div>
               </dl>

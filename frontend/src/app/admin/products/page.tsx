@@ -113,7 +113,7 @@ export default function AdminProductsPage() {
                     </div>
                   </td>
                   <td className="px-6 py-4 text-slate-500 font-mono text-xs">{product.sku || product.id.slice(0,8).toUpperCase()}</td>
-                  <td className="px-6 py-4 font-semibold text-slate-900">${Number(product.basePrice || 0).toFixed(2)}</td>
+                  <td className="px-6 py-4 font-semibold text-slate-900">₹{Number(product.basePrice || 0).toFixed(0)}</td>
                   <td className="px-6 py-4">
                      <span className={`px-2.5 py-1 rounded-full text-xs font-bold ${(product.stockQuantity || product.stock || 0) > 10 ? 'bg-green-100 text-green-700' : (product.stockQuantity || product.stock || 0) > 0 ? 'bg-orange-100 text-orange-700' : 'bg-red-100 text-red-700'}`}>
                         {product.stockQuantity || product.stock || 0} in stock

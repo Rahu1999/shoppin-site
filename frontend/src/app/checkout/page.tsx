@@ -2,14 +2,14 @@
 
 import { CheckoutForm } from '@/components/checkout/CheckoutForm';
 import { useCartStore } from '@/store/cartStore';
-import { useSettingsStore } from '@/store/settingsStore';
+
 import { formatPrice } from '@/utils/price';
 import Image from 'next/image';
 import { ShieldCheck, Lock } from 'lucide-react';
 
 export default function CheckoutPage() {
   const { items, total } = useCartStore();
-  const { currency, exchangeRate } = useSettingsStore();
+
 
   return (
     <div className="bg-surface min-h-[85vh] pt-12 pb-24">
@@ -49,7 +49,7 @@ export default function CheckoutPage() {
                       <p className="text-xs text-slate-500 mt-1 font-medium">Qty: {item.quantity}</p>
                     </div>
                     <div className="font-black text-slate-900 pt-1 shrink-0">
-                      {formatPrice(Number(item.price) * item.quantity, currency, exchangeRate)}
+                      {formatPrice(Number(item.price) * item.quantity)}
                     </div>
                   </li>
                 ))}
@@ -58,7 +58,7 @@ export default function CheckoutPage() {
                <div className="p-6 sm:p-8 bg-white">
                   <div className="flex justify-between items-center mb-3 text-sm">
                     <span className="text-slate-500 font-medium">Subtotal</span>
-                    <span className="font-bold text-slate-900">{formatPrice(total, currency, exchangeRate)}</span>
+                    <span className="font-bold text-slate-900">{formatPrice(total)}</span>
                   </div>
                    <div className="flex justify-between items-center mb-5 text-sm">
                     <span className="text-slate-500 font-medium">Shipping</span>
@@ -67,7 +67,7 @@ export default function CheckoutPage() {
                   <div className="flex justify-between items-end pt-5 border-t border-slate-100">
                     <span className="text-base font-bold text-slate-900">Total</span>
                     <div className="text-right">
-                      <span className="text-3xl font-black text-primary tracking-tight">{formatPrice(total, currency, exchangeRate)}</span>
+                      <span className="text-3xl font-black text-primary tracking-tight">{formatPrice(total)}</span>
                     </div>
                   </div>
                </div>

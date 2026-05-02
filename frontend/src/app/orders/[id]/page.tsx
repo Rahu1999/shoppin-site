@@ -6,13 +6,13 @@ import { apiGet } from '@/services/apiClient';
 import { Package, MapPin, CreditCard, ChevronLeft, CheckCircle2, AlertCircle, Clock } from 'lucide-react';
 import Link from 'next/link';
 import Image from 'next/image';
-import { useSettingsStore } from '@/store/settingsStore';
+
 import { formatPrice } from '@/utils/price';
 
 export default function OrderDetailPage() {
   const params = useParams();
   const orderId = params.id as string;
-  const { currency, exchangeRate } = useSettingsStore();
+
 
   const { data: order, isLoading } = useQuery({
     queryKey: ['order', orderId],
@@ -123,11 +123,11 @@ export default function OrderDetailPage() {
                     {item.product?.name}
                   </Link>
                   <p className="text-slate-500 text-sm mt-2 font-medium">
-                    {formatPrice(Number(item.price), currency, exchangeRate)} <span className="opacity-50">×</span> {item.quantity}
+                    {formatPrice(Number(item.price))} <span className="opacity-50">×</span> {item.quantity}
                   </p>
                 </div>
                 <div className="font-black text-slate-900 text-xl pt-2 sm:pt-0 shrink-0">
-                  {formatPrice(Number(item.price) * item.quantity, currency, exchangeRate)}
+                  {formatPrice(Number(item.price) * item.quantity)}
                 </div>
               </li>
             ))}
@@ -141,7 +141,7 @@ export default function OrderDetailPage() {
              <div className="w-full sm:w-80 space-y-4">
                 <div className="flex justify-between text-slate-600 text-sm">
                   <span className="font-medium">Subtotal</span>
-                  <span className="font-bold text-slate-900">{formatPrice(Number(order.totalAmount), currency, exchangeRate)}</span>
+                  <span className="font-bold text-slate-900">{formatPrice(Number(order.totalAmount))}</span>
                 </div>
                 <div className="flex justify-between text-slate-600 text-sm">
                   <span className="font-medium">Shipping & Handling</span>
@@ -149,7 +149,7 @@ export default function OrderDetailPage() {
                 </div>
                 <div className="flex justify-between items-center pt-5 border-t border-slate-200">
                   <span className="font-black text-slate-900 text-lg uppercase tracking-widest text-[11px]">Total Paid</span>
-                  <span className="font-black text-primary text-3xl tracking-tight">{formatPrice(Number(order.totalAmount), currency, exchangeRate)}</span>
+                  <span className="font-black text-primary text-3xl tracking-tight">{formatPrice(Number(order.totalAmount))}</span>
                 </div>
              </div>
           </div>

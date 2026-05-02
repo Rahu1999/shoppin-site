@@ -145,18 +145,18 @@ export function ProductForm({ product, categories, onSuccess, onCancel }: Produc
 
       <div className="grid grid-cols-2 gap-4">
         <div className="space-y-1.5">
-          <label className="text-sm font-semibold text-slate-700">Price ($)</label>
+          <label className="text-sm font-semibold text-slate-700">Price (₹)</label>
           <Input type="number" name="basePrice" value={formData.basePrice} onChange={handleChange} step="0.01" required />
         </div>
         <div className="space-y-1.5">
-          <label className="text-sm font-semibold text-slate-700">Original Price ($)</label>
+          <label className="text-sm font-semibold text-slate-700">Original Price (₹)</label>
           <Input type="number" name="comparePrice" value={formData.comparePrice} onChange={handleChange} step="0.01" />
         </div>
       </div>
 
       <div className="grid grid-cols-2 gap-4">
         <div className="space-y-1.5">
-          <label className="text-sm font-semibold text-slate-700">Cost Price ($)</label>
+          <label className="text-sm font-semibold text-slate-700">Cost Price (₹)</label>
           <Input type="number" name="costPrice" value={formData.costPrice} onChange={handleChange} step="0.01" />
         </div>
         <div className="space-y-1.5">
