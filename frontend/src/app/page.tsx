@@ -119,7 +119,7 @@ export default function Home() {
       </section>
 
       {/* 3. Featured Categories Grid */}
-      <section className="py-32">
+      {/* <section className="py-32">
         <div className="container mx-auto px-4 lg:px-8 text-center mb-16">
           <h2 className="text-4xl md:text-5xl font-black text-slate-900 tracking-tighter mb-4 uppercase italic">Browse Universe</h2>
           <p className="text-slate-500 font-medium text-lg max-w-2xl mx-auto">Precision engineered categories for the tech enthusiast.</p>
@@ -147,7 +147,7 @@ export default function Home() {
               ))}
            </div>
         </div>
-      </section>
+      </section> */}
 
       {/* 4. Trending Products Grid */}
       <section className="py-24 bg-white border-y border-slate-100">

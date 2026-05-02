@@ -166,7 +166,7 @@ export default function ProductDetailPage() {
               </div>
 
               <p className="mt-6 text-slate-600 leading-relaxed text-lg min-h-16">
-                {product.description || 'Experience premium quality with this exceptionally crafted product. Designed to elevate your daily routine, combining sleek aesthetics with unparalleled functionality.'}
+                {product.shortDescription || 'Experience premium quality with this exceptionally crafted product. Designed to elevate your daily routine, combining sleek aesthetics with unparalleled functionality.'}
               </p>
 
               <div className="mt-10 pt-8 border-t border-slate-100">
