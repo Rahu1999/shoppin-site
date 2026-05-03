@@ -14,6 +14,7 @@ A clean, minimal, and high-performance eCommerce frontend built with Next.js (Ap
 ## 🛍 Storefront Features
 - **Local Currency**: Strictly locked to INR (₹) for the local Indian market.
 - **WhatsApp Integration**: Floating global contact button featuring a custom interactive tooltip, smooth floating/pulsing CSS animations (`globals.css`), and product-specific enquiry pre-fills.
+- **Contact & Map**: Integrated interactive contact form powered by a Next.js Server Action and `nodemailer` for instant email delivery. Also includes a Google Maps embed on the homepage (`/#contact`) for lead generation and physical store routing.
 - **Global Search**: High-performance functional search bar in the navbar that queries product names, descriptions, and SKUs.
 - **Account Dashboard**: Integrated User Profile, Address Manager, and Order History.
 - **Smart Checkout**: Intelligent address selection (stored vs. new address) and multiple payment methods (Stripe, PayPal, COD).

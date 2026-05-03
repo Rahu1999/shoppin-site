@@ -1,13 +1,17 @@
 'use client';
 
+import { useState } from 'react';
 import Link from 'next/link';
-import { ArrowRight, ShieldCheck, Package, Clock, Sparkles, Loader2, Phone, Mail, MapPin } from 'lucide-react';
+import { ArrowRight, ShieldCheck, Package, Clock, Sparkles, Loader2, Phone, Mail, MapPin, CheckCircle, MessageSquare } from 'lucide-react';
 import { useProducts } from '@/hooks/useProducts';
 import { useAddToCart } from '@/hooks/useCart';
 import { ProductCard } from '@/components/product/ProductCard';
 import { ProductGrid } from '@/components/product/ProductGrid';
+import { Input } from '@/components/ui/Input';
+import { Button } from '@/components/ui/Button';
 import { SectionWrapper, SectionHeading } from '@/components/ui/SectionWrapper';
 import { BRAND, buildWhatsAppLink } from '@/config/brand';
+import { sendEmailAction } from '@/app/actions/sendEmail';
 
 // ─── Feature/trust data ──────────────────────────────────────────────────────
 const WHY_US = [
@@ -37,6 +41,33 @@ export default function Home() {
   const { data: featuredData, isLoading } = useProducts({ isFeatured: 'true', limit: 6 });
   const { data: allData, isLoading: allLoading } = useProducts({ limit: 6 });
   const { mutate: addToCart } = useAddToCart();
+
+  const [formState, setFormState] = useState({ name: '', phone: '', message: '' });
+  const [submitted, setSubmitted] = useState(false);
+  const [formLoading, setFormLoading] = useState(false);
+
+  const handleContactChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
+    const { name, value } = e.target;
+    setFormState(prev => ({ ...prev, [name]: value }));
+  };
+
+  const handleContactSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setFormLoading(true);
+    
+    try {
+      const result = await sendEmailAction(formState);
+      if (result.success) {
+        setSubmitted(true);
+      } else {
+        alert(result.error || "Something went wrong.");
+      }
+    } catch (error) {
+      alert("Failed to send message. Please try again.");
+    } finally {
+      setFormLoading(false);
+    }
+  };
 
   const featuredProducts = featuredData?.items || [];
   const allProducts = allData?.items || [];
@@ -266,6 +297,139 @@ export default function Home() {
             </svg>
             Chat with us on WhatsApp
           </a>
+        </div>
+      </section>
+
+      {/* ── CONTACT & MAP ─────────────────────────────────────────────────── */}
+      <section id="contact" className="py-20 bg-gray-50 border-t border-gray-100 relative">
+        <div className="container mx-auto px-4 lg:px-8">
+          <SectionHeading
+            title="Get in Touch"
+            subtitle="Visit our store or drop us a message for bulk orders and custom requirements."
+          />
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 items-stretch mt-12">
+            
+            {/* Left: Map */}
+            <div className="rounded-2xl overflow-hidden border border-gray-200 shadow-sm h-full min-h-[400px] relative bg-white">
+              <iframe
+                title={`${BRAND.name} Location`}
+                src="https://www.google.com/maps/embed?pb=!1m18!1m12!1m3!1d3769.314949576713!2d72.84883441490212!3d19.158737387038686!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0x3be7b64a27546419%3A0xc39304a08cf51df9!2sSonawala%20Rd%2C%20Goregaon%20East%2C%20Mumbai%2C%20Maharashtra%20400063!5e0!3m2!1sen!2sin!4v1700000000000!5m2!1sen!2sin"
+                width="100%"
+                height="100%"
+                style={{ border: 0 }}
+                allowFullScreen
+                loading="lazy"
+                referrerPolicy="no-referrer-when-downgrade"
+                className="w-full h-full absolute inset-0"
+              />
+            </div>
+
+            {/* Right: Contact Form */}
+            <div>
+              <div className="border border-gray-200 bg-white rounded-2xl shadow-sm p-8 h-full">
+                {submitted ? (
+                  <div className="flex flex-col items-center justify-center py-16 gap-4 text-center h-full">
+                    <div className="w-20 h-20 rounded-full bg-emerald-50 border-2 border-emerald-100 flex items-center justify-center">
+                      <CheckCircle className="w-10 h-10 text-emerald-500" />
+                    </div>
+                    <h3 className="font-bold text-gray-900 text-2xl">Message Sent!</h3>
+                    <p className="text-gray-500">
+                      Thank you, <strong className="text-gray-900">{formState.name}</strong>!
+                      We'll contact you on <strong className="text-gray-900">{formState.phone}</strong> shortly.
+                    </p>
+                    <button
+                      onClick={() => { setSubmitted(false); setFormState({ name: "", phone: "", message: "" }); }}
+                      className="text-gray-600 text-sm hover:underline mt-2 font-medium"
+                    >
+                      Send another message
+                    </button>
+                  </div>
+                ) : (
+                  <>
+                    <div className="flex items-center gap-3 mb-6">
+                      <div className="w-10 h-10 rounded-xl bg-gray-900 flex items-center justify-center shrink-0">
+                        <MessageSquare className="w-5 h-5 text-white" />
+                      </div>
+                      <h3 className="font-bold text-gray-900 text-xl">
+                        Send an Enquiry
+                      </h3>
+                    </div>
+
+                    <form onSubmit={handleContactSubmit} className="flex flex-col gap-4">
+                      <div>
+                        <label htmlFor="contact-name" className="text-gray-500 text-xs font-semibold uppercase tracking-wide mb-2 block">
+                          Your Name *
+                        </label>
+                        <Input
+                          id="contact-name"
+                          name="name"
+                          placeholder="e.g. Rahul Sharma"
+                          value={formState.name}
+                          onChange={handleContactChange}
+                          required
+                          className="bg-gray-50 border-gray-200 text-gray-900 placeholder:text-gray-400 rounded-xl focus:border-gray-900 focus:ring-gray-900/10"
+                        />
+                      </div>
+
+                      <div>
+                        <label htmlFor="contact-phone" className="text-gray-500 text-xs font-semibold uppercase tracking-wide mb-2 block">
+                          Phone Number *
+                        </label>
+                        <Input
+                          id="contact-phone"
+                          name="phone"
+                          type="tel"
+                          placeholder={`e.g. ${BRAND.phoneRaw}`}
+                          value={formState.phone}
+                          onChange={handleContactChange}
+                          required
+                          className="bg-gray-50 border-gray-200 text-gray-900 placeholder:text-gray-400 rounded-xl focus:border-gray-900 focus:ring-gray-900/10"
+                        />
+                      </div>
+
+                      <div>
+                        <label htmlFor="contact-message" className="text-gray-500 text-xs font-semibold uppercase tracking-wide mb-2 block">
+                          Your Message *
+                        </label>
+                        <textarea
+                          id="contact-message"
+                          name="message"
+                          placeholder="Tell us about your requirement..."
+                          value={formState.message}
+                          onChange={handleContactChange}
+                          required
+                          rows={4}
+                          className="w-full bg-gray-50 border border-gray-200 text-gray-900 placeholder:text-gray-400 rounded-xl p-3 focus:border-gray-900 focus:ring-1 focus:ring-gray-900/10 focus:outline-none resize-none text-sm"
+                        />
+                      </div>
+
+                      <Button
+                        type="submit"
+                        disabled={formLoading}
+                        className="bg-gray-900 text-white rounded-xl py-6 font-bold text-base hover:bg-gray-800 disabled:opacity-70 transition-colors mt-2"
+                      >
+                        {formLoading ? (
+                          <span className="flex items-center justify-center gap-2">
+                            <Loader2 className="w-5 h-5 animate-spin" />
+                            Sending...
+                          </span>
+                        ) : (
+                          "Send Message"
+                        )}
+                      </Button>
+
+                      <p className="text-gray-500 text-xs text-center mt-2">
+                        Or contact us on WhatsApp:{" "}
+                        <a href={buildWhatsAppLink()} target="_blank" rel="noopener noreferrer" className="text-green-600 font-semibold hover:underline">
+                          Click Here
+                        </a>
+                      </p>
+                    </form>
+                  </>
+                )}
+              </div>
+            </div>
+          </div>
         </div>
       </section>
 
