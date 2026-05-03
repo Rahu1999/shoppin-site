@@ -1,6 +1,6 @@
-# ModernShop Backend - Clean Architecture eCommerce
+# Rajesh Industries Backend - Clean Architecture eCommerce
 
-This is the backend service for the ModernShop eCommerce platform, built with Node.js, Express, and TypeORM. It follows **Clean Architecture** and **SOLID** principles to ensure scalability, maintainability, and security.
+This is the backend service for the Rajesh Industries eCommerce platform, built with Node.js, Express, and TypeORM. It follows **Clean Architecture** and **SOLID** principles to ensure scalability, maintainability, and security.
 
 ## 🚀 Tech Stack
 - **Runtime**: Node.js (TypeScript)
@@ -74,3 +74,4 @@ Use the centralized `logger` from `@config/logger`. Significant events (Orders, 
 - **Paths**: Use `@alias` paths defined in `tsconfig.json`.
 - **Circular Dependencies**: Always export Entities and Enums from `src/entities/index.ts` to avoid metadata initialization failures.
 - **Middleware Order**: `requestLogger` -> `helmet` -> `cors` -> `json` -> `routes` -> `errorHandler`.
+- **AUTOMATIC DOCUMENTATION**: **IMPORTANT:** Whenever you build a new feature, fix a bug, or make any structural change, you MUST automatically update this `README.md` file to reflect those changes without waiting for the user to ask you. Keep this document as the living source of truth.

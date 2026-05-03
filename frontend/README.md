@@ -1,6 +1,6 @@
-# ModernShop Frontend - Next.js Premium Storefront
+# Rajesh Industries Frontend - Steel Kitchen Storage
 
-A high-performance, responsive eCommerce frontend built with Next.js (App Router), Tailwind CSS, and Shadcn UI.
+A clean, minimal, and high-performance eCommerce frontend built with Next.js (App Router), Tailwind CSS, and Shadcn UI for Rajesh Industries (steelkitchen.in).
 
 ## 🚀 Tech Stack
 - **Framework**: Next.js 14+ (App Router)
@@ -12,7 +12,8 @@ A high-performance, responsive eCommerce frontend built with Next.js (App Router
 - **Icons**: Lucide-React
 
 ## 🛍 Storefront Features
-- **Multi-Currency Support**: Instant switching between `USD ($)` and `INR (₹)` with automatic site-wide price formatting and conversion.
+- **Local Currency**: Strictly locked to INR (₹) for the local Indian market.
+- **WhatsApp Integration**: Floating global contact button featuring a custom interactive tooltip, smooth floating/pulsing CSS animations (`globals.css`), and product-specific enquiry pre-fills.
 - **Global Search**: High-performance functional search bar in the navbar that queries product names, descriptions, and SKUs.
 - **Account Dashboard**: Integrated User Profile, Address Manager, and Order History.
 - **Smart Checkout**: Intelligent address selection (stored vs. new address) and multiple payment methods (Stripe, PayPal, COD).
@@ -66,3 +67,4 @@ if (!mounted) return null;
 - **State**: `authStore` handles login state/tokens. `cartStore` handles checkout items.
 - **Images**: Use standard `img` for external Unsplash photos to avoid `next/image` domain whitelist restrictions unless specifically requested.
 - **Loading**: Use the `Loader2` spinner from Lucide for consistent loading states.
+- **AUTOMATIC DOCUMENTATION**: **IMPORTANT:** Whenever you build a new feature, fix a bug, or make any structural change, you MUST automatically update this `README.md` file to reflect those changes without waiting for the user to ask you. Keep this document as the living source of truth.

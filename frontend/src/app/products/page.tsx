@@ -18,6 +18,7 @@ function ProductsContent() {
   const [search, setSearch] = useState(urlSearch);
   const [activeCategory, setActiveCategory] = useState<string | null>(urlCategory);
   const [page, setPage] = useState(1);
+  const [isDropdownOpen, setIsDropdownOpen] = useState(false);
 
   useEffect(() => {
     setSearch(urlSearch);
@@ -26,7 +27,7 @@ function ProductsContent() {
 
   const { data, isLoading, isError } = useProducts({
     search: search || undefined,
-    category: activeCategory || undefined,
+    categoryId: activeCategory || undefined,
     limit: 12,
     page,
   });
@@ -95,30 +96,42 @@ function ProductsContent() {
 
           {/* Category dropdown */}
           {categories && categories.length > 0 && (
-            <div className="relative group">
-              <button className="h-10 px-4 rounded-lg border border-gray-200 bg-white text-sm font-medium text-gray-700 flex items-center gap-2 hover:border-gray-400 transition-colors">
+            <div className="relative">
+              <button 
+                type="button"
+                onClick={() => setIsDropdownOpen(!isDropdownOpen)}
+                className="h-10 px-4 rounded-lg border border-gray-200 bg-white text-sm font-medium text-gray-700 flex items-center gap-2 hover:border-gray-400 transition-colors"
+              >
                 {activeCategory
                   ? categories.find((c) => c.id === activeCategory)?.name ?? 'Category'
                   : 'All Categories'}
-                <ChevronDown className="h-4 w-4 text-gray-400" />
+                <ChevronDown className={`h-4 w-4 text-gray-400 transition-transform ${isDropdownOpen ? 'rotate-180' : ''}`} />
               </button>
-              <div className="absolute top-full left-0 mt-1 w-56 bg-white border border-gray-100 rounded-xl shadow-lg opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all z-40 py-2">
-                <button
-                  onClick={() => handleCategoryChange(null)}
-                  className={`w-full text-left px-4 py-2.5 text-sm flex items-center justify-between hover:bg-gray-50 ${!activeCategory ? 'font-semibold text-gray-900' : 'text-gray-600'}`}
-                >
-                  All Categories {!activeCategory && <Check className="h-3.5 w-3.5" />}
-                </button>
-                {categories.map((cat) => (
-                  <button
-                    key={cat.id}
-                    onClick={() => handleCategoryChange(cat.id)}
-                    className={`w-full text-left px-4 py-2.5 text-sm flex items-center justify-between hover:bg-gray-50 ${activeCategory === cat.id ? 'font-semibold text-gray-900' : 'text-gray-600'}`}
-                  >
-                    {cat.name} {activeCategory === cat.id && <Check className="h-3.5 w-3.5" />}
-                  </button>
-                ))}
-              </div>
+              
+              {isDropdownOpen && (
+                <>
+                  <div className="fixed inset-0 z-30" onClick={() => setIsDropdownOpen(false)} />
+                  <div className="absolute top-full left-0 mt-1 w-56 bg-white border border-gray-100 rounded-xl shadow-lg transition-all z-40 py-2">
+                    <button
+                      type="button"
+                      onClick={() => { handleCategoryChange(null); setIsDropdownOpen(false); }}
+                      className={`w-full text-left px-4 py-2.5 text-sm flex items-center justify-between hover:bg-gray-50 ${!activeCategory ? 'font-semibold text-gray-900' : 'text-gray-600'}`}
+                    >
+                      All Categories {!activeCategory && <Check className="h-3.5 w-3.5" />}
+                    </button>
+                    {categories.map((cat) => (
+                      <button
+                        type="button"
+                        key={cat.id}
+                        onClick={() => { handleCategoryChange(cat.id); setIsDropdownOpen(false); }}
+                        className={`w-full text-left px-4 py-2.5 text-sm flex items-center justify-between hover:bg-gray-50 ${activeCategory === cat.id ? 'font-semibold text-gray-900' : 'text-gray-600'}`}
+                      >
+                        {cat.name} {activeCategory === cat.id && <Check className="h-3.5 w-3.5" />}
+                      </button>
+                    ))}
+                  </div>
+                </>
+              )}
             </div>
           )}
 
