@@ -18,6 +18,6 @@ export class Cart extends BaseEntity {
   @JoinColumn({ name: 'user_id' })
   user?: User;
 
-  @OneToMany(() => CartItem, (item) => item.cart, { cascade: true, eager: true })
+  @OneToMany(() => CartItem, (item) => item.cart, { cascade: true })
   items!: CartItem[];
 }

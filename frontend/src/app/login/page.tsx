@@ -22,11 +22,11 @@ function LoginContent() {
     e.preventDefault();
     loginMutation.mutate({ email, password }, {
       onSuccess: (data) => {
-        // Redirect based on role
         if (data.user.roles.includes('admin') || data.user.roles.includes('super_admin')) {
           router.push('/admin');
         } else {
-          router.push('/profile');
+          const redirectTo = searchParams.get('redirect') || '/';
+          router.push(redirectTo);
         }
       }
     });

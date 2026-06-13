@@ -2,8 +2,9 @@
 
 import { useQuery } from '@tanstack/react-query';
 import { apiGet } from '@/services/apiClient';
-import { Search, Package, MoreVertical, Eye } from 'lucide-react';
+import { Search, Package, Eye } from 'lucide-react';
 import { Input } from '@/components/ui/Input';
+import { formatPrice } from '@/utils/price';
 import Link from 'next/link';
 
 export default function AdminOrdersPage() {
@@ -61,15 +62,16 @@ export default function AdminOrdersPage() {
                     <p className="font-semibold text-slate-900">{order.user?.firstName} {order.user?.lastName}</p>
                     <p className="text-xs text-slate-500">{order.user?.email}</p>
                   </td>
-                  <td className="px-6 py-4 font-bold text-slate-900">${Number(order.totalAmount).toFixed(2)}</td>
+                  <td className="px-6 py-4 font-bold text-slate-900">{formatPrice(Number(order.totalAmount || order.total))}</td>
                   <td className="px-6 py-4">
                      <span className="px-2 py-1 rounded bg-slate-100 text-xs font-semibold text-slate-600">Paid</span>
                   </td>
                   <td className="px-6 py-4">
-                     <span className={`px-2.5 py-1 rounded-full text-xs font-bold ${
-                       order.status === 'DELIVERED' ? 'bg-green-100 text-green-700' : 
-                       order.status === 'SHIPPED' ? 'bg-blue-100 text-blue-700' : 
-                       order.status === 'CANCELLED' ? 'bg-red-100 text-red-700' : 
+                     <span className={`px-2.5 py-1 rounded-full text-xs font-bold uppercase ${
+                       order.status === 'delivered' ? 'bg-green-100 text-green-700' :
+                       order.status === 'shipped' ? 'bg-blue-100 text-blue-700' :
+                       order.status === 'cancelled' ? 'bg-red-100 text-red-700' :
+                       order.status === 'pending' ? 'bg-yellow-100 text-yellow-700' :
                        'bg-orange-100 text-orange-700'}`}>
                         {order.status}
                      </span>

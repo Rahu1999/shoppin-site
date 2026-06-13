@@ -2,13 +2,25 @@
 
 import { CheckoutForm } from '@/components/checkout/CheckoutForm';
 import { useCartStore } from '@/store/cartStore';
-
+import { useAuthStore } from '@/store/authStore';
+import { useEffect } from 'react';
+import { useRouter } from 'next/navigation';
 import { formatPrice } from '@/utils/price';
 import Image from 'next/image';
 import { ShieldCheck, Lock } from 'lucide-react';
 
 export default function CheckoutPage() {
   const { items, total } = useCartStore();
+  const { isAuthenticated } = useAuthStore();
+  const router = useRouter();
+
+  useEffect(() => {
+    if (!isAuthenticated) {
+      router.replace('/login?redirect=/checkout');
+    }
+  }, [isAuthenticated, router]);
+
+  if (!isAuthenticated) return null;
 
 
   return (

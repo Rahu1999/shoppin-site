@@ -40,12 +40,8 @@ export class OrdersService {
 
     // Calculate Totals
     let subtotal = 0;
-    console.log('Cart Items in Checkout:', JSON.stringify(cart.items.map(i => ({ id: i.id, pId: i.productId, p: !!i.product, v: !!i.variant })), null, 2));
-    
     cart.items.forEach(item => {
-      // Refresh price from DB entities to avoid cart tampering
       if (!item.product && !item.variant) {
-        console.error('Item product or variant is missing:', item.id);
         // Fallback to item.price if product relation failed to load
         subtotal += Number(item.price || 0) * item.quantity;
         return;
@@ -175,7 +171,7 @@ export class OrdersService {
       order: { createdAt: 'DESC' },
       skip,
       take: limit,
-      relations: ['items'],
+      relations: ['items', 'items.product', 'items.product.images'],
     });
 
     return { items, meta: buildPaginationMeta(page, limit, total) };
@@ -187,7 +183,7 @@ export class OrdersService {
 
     const order = await this.orderRepo.findOne({
       where,
-      relations: ['items', 'items.product', 'history', 'payments'],
+      relations: ['items', 'items.product', 'items.product.images', 'history', 'payments'],
     });
 
     if (!order) throw AppError.notFound('Order');

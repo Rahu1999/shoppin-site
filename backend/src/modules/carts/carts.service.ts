@@ -17,7 +17,7 @@ export class CartsService {
     const where = userId ? { userId } : { sessionId };
     let cart = await this.cartRepo.findOne({
       where,
-      relations: ['items', 'items.product', 'items.variant'],
+      relations: ['items', 'items.product', 'items.product.images', 'items.variant'],
     });
 
     if (!cart) {
@@ -59,7 +59,7 @@ export class CartsService {
       await this.cartItemRepo.save(newItem);
     }
 
-    return this.cartRepo.findOne({ where: { id: cartId }, relations: ['items', 'items.product', 'items.variant'] });
+    return this.cartRepo.findOne({ where: { id: cartId }, relations: ['items', 'items.product', 'items.product.images', 'items.variant'] });
   }
 
   public async updateItemQuantity(cartId: string, itemId: string, quantity: number) {
@@ -68,8 +68,8 @@ export class CartsService {
 
     item.quantity = quantity;
     await this.cartItemRepo.save(item);
-    
-    return this.cartRepo.findOne({ where: { id: cartId }, relations: ['items', 'items.product', 'items.variant'] });
+
+    return this.cartRepo.findOne({ where: { id: cartId }, relations: ['items', 'items.product', 'items.product.images', 'items.variant'] });
   }
 
   public async removeItem(cartId: string, itemId: string) {

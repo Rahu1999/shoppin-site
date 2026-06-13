@@ -104,44 +104,36 @@ export class ProductsService {
 
   // Admin Methods
   public async createProduct(data: Record<string, any>) {
-    console.log('[DEBUG] createProduct payload:', JSON.stringify(data, null, 2));
-    
     const existing = await this.productRepo.findOneBy({ slug: data.slug });
     if (existing) throw AppError.conflict('Product with this slug already exists');
 
     const { stockQuantity, images, imageUrls, ...productData } = data;
-    
+
     if (productData.sku === '') productData.sku = null;
     if (productData.comparePrice === 0) productData.comparePrice = null;
     if (productData.costPrice === 0) productData.costPrice = null;
-    
+
     const result = await AppDataSource.transaction(async (manager) => {
-      // 1. Save Product
       const product = manager.create(Product, productData);
       const savedProduct = await manager.save(product);
-      console.log('[DEBUG] Product saved, ID:', savedProduct.id);
 
-      // 2. Save Images
       if (Array.isArray(images) && images.length > 0) {
-        console.log('[DEBUG] Persisting images:', images);
-        const imageEntities = images.map((url, index) => 
+        const imageEntities = images.map((url, index) =>
           manager.create(ProductImage, {
             productId: savedProduct.id,
             url,
             isPrimary: index === 0,
-            sortOrder: index
+            sortOrder: index,
           })
         );
         await manager.save(ProductImage, imageEntities);
       }
 
-      // 3. Save Inventory
       if (stockQuantity !== undefined) {
-        console.log('[DEBUG] Persisting inventory, stock:', stockQuantity);
         const inventory = manager.create(Inventory, {
           productId: savedProduct.id,
           quantity: stockQuantity,
-          reserved: 0
+          reserved: 0,
         });
         await manager.save(Inventory, inventory);
       }
@@ -149,46 +141,37 @@ export class ProductsService {
       return savedProduct;
     });
 
-    const finalProduct = await this.productRepo.findOne({
+    return this.productRepo.findOne({
       where: { id: result.id },
-      relations: ['images', 'category', 'inventory']
+      relations: ['images', 'category', 'inventory'],
     });
-    
-    console.log('[DEBUG] Returning product with images:', finalProduct?.images?.length);
-    return finalProduct;
   }
 
   public async updateProduct(id: string, data: Record<string, any>) {
-    console.log('[DEBUG] updateProduct payload:', JSON.stringify(data, null, 2));
     const { images, stockQuantity, imageUrls, ...updateData } = data;
-    
+
     if (updateData.sku === '') updateData.sku = null;
     if (updateData.comparePrice === 0) updateData.comparePrice = null;
     if (updateData.costPrice === 0) updateData.costPrice = null;
 
-    const result = await AppDataSource.transaction(async (manager) => {
-      // 1. Update basic fields
+    await AppDataSource.transaction(async (manager) => {
       const updateResult = await manager.update(Product, id, updateData);
       if (updateResult.affected === 0) throw AppError.notFound('Product');
 
-      // 2. Sync Images
       if (Array.isArray(images)) {
-        console.log('[DEBUG] Syncing images for update:', images);
         await manager.delete(ProductImage, { productId: id });
-        const imageEntities = images.map((url: string, index: number) => 
+        const imageEntities = images.map((url: string, index: number) =>
           manager.create(ProductImage, {
             productId: id,
             url,
             isPrimary: index === 0,
-            sortOrder: index
+            sortOrder: index,
           })
         );
         await manager.save(ProductImage, imageEntities);
       }
 
-      // 3. Update Inventory
       if (stockQuantity !== undefined) {
-        console.log('[DEBUG] Updating inventory for update:', stockQuantity);
         const inventoryRepo = manager.getRepository(Inventory);
         const inventory = await inventoryRepo.findOneBy({ productId: id });
         

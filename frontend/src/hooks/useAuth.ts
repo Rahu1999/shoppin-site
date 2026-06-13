@@ -14,9 +14,11 @@ export const useLogin = () => {
 
   return useMutation({
     mutationFn: (data: any) => apiPost<{ user: User, accessToken: string, refreshToken: string }>('/auth/login', data),
-    onSuccess: (data) => {
+    onSuccess: async (data) => {
       setTokens(data.accessToken, data.refreshToken);
       setUser(data.user);
+      // Merge guest cart into user's cart (fire-and-forget)
+      try { await apiPost('/carts/merge'); } catch { /* ignore */ }
     },
   });
 };

@@ -57,7 +57,9 @@ export default function AdminUsersPage() {
     <div className="space-y-6">
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <h1 className="text-3xl font-bold tracking-tight text-slate-900">Users</h1>
-        <Button className="gap-2"><UserPlus className="w-4 h-4" /> Add User</Button>
+        <Button className="gap-2" onClick={() => { setEditingUser(null); setIsModalOpen(true); }}>
+          <UserPlus className="w-4 h-4" /> Add User
+        </Button>
       </div>
 
       <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
@@ -140,10 +142,10 @@ export default function AdminUsersPage() {
         </div>
       </div>
 
-      <Modal 
-        isOpen={isModalOpen} 
-        onClose={() => setIsModalOpen(false)} 
-        title="Edit User Account"
+      <Modal
+        isOpen={isModalOpen}
+        onClose={() => setIsModalOpen(false)}
+        title={editingUser ? 'Edit User Account' : 'Add User'}
       >
         <UserForm 
           user={editingUser} 

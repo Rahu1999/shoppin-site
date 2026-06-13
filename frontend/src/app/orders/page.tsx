@@ -30,13 +30,16 @@ export default function OrdersPage() {
   const orders = data?.items || [];
 
   const getStatusBadge = (status: string) => {
-    switch (status) {
-      case 'DELIVERED':
+    switch (status?.toLowerCase()) {
+      case 'delivered':
         return <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-bold bg-green-100 text-green-700 shadow-sm border border-green-200 uppercase tracking-widest"><CheckCircle2 className="w-3.5 h-3.5" /> Delivered</span>;
-      case 'SHIPPED':
+      case 'shipped':
         return <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-bold bg-blue-100 text-blue-700 shadow-sm border border-blue-200 uppercase tracking-widest"><Package className="w-3.5 h-3.5" /> Shipped</span>;
-      case 'CANCELLED':
-        return <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-bold bg-rose-100 text-rose-700 shadow-sm border border-rose-200 uppercase tracking-widest"><AlertCircle className="w-3.5 h-3.5" /> Cancelled</span>;
+      case 'cancelled':
+      case 'refunded':
+        return <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-bold bg-rose-100 text-rose-700 shadow-sm border border-rose-200 uppercase tracking-widest"><AlertCircle className="w-3.5 h-3.5" /> {status.charAt(0).toUpperCase() + status.slice(1)}</span>;
+      case 'pending':
+        return <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-bold bg-yellow-100 text-yellow-700 shadow-sm border border-yellow-200 uppercase tracking-widest"><Clock className="w-3.5 h-3.5" /> Pending</span>;
       default:
         return <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-bold bg-amber-100 text-amber-700 shadow-sm border border-amber-200 uppercase tracking-widest"><Clock className="w-3.5 h-3.5" /> Processing</span>;
     }
@@ -82,7 +85,7 @@ export default function OrdersPage() {
                     </div>
                     <div>
                       <p className="text-slate-400 font-bold uppercase tracking-widest text-[10px] mb-1">Total</p>
-                      <p className="font-bold text-slate-900 text-base">{formatPrice(Number(order.totalAmount))}</p>
+                      <p className="font-bold text-slate-900 text-base">{formatPrice(Number(order.total || order.totalAmount))}</p>
                     </div>
                     <div className="col-span-2 sm:col-span-1">
                       <p className="text-slate-400 font-bold uppercase tracking-widest text-[10px] mb-1">Order ID</p>

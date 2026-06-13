@@ -5,6 +5,7 @@ import { useCartStore } from '@/store/cartStore';
 import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
 import { apiPost } from '@/services/apiClient';
+import { formatPrice } from '@/utils/price';
 import { useMutation, useQuery } from '@tanstack/react-query';
 import { useRouter } from 'next/navigation';
 import { CheckCircle2, CreditCard, MapPin, Plus, Navigation } from 'lucide-react';
@@ -18,10 +19,11 @@ export function CheckoutForm() {
 
   const [step, setStep] = useState<1 | 2 | 3>(1);
   const [shippingAddress, setShippingAddress] = useState({
-    street: '', city: '', state: '', zip: '', country: 'US', phone: ''
+    street: '', city: '', state: '', zip: '', country: 'India', phone: ''
   });
   const [selectedAddressId, setSelectedAddressId] = useState<string | null>(null);
-  const [showNewAddressForm, setShowNewAddressForm] = useState(false);
+  // Show new address form immediately if user is not logged in or has no saved addresses
+  const [showNewAddressForm, setShowNewAddressForm] = useState(!user);
   const [paymentMethod, setPaymentMethod] = useState<'CREDIT_CARD' | 'PAYPAL' | 'COD'>('CREDIT_CARD');
   
   const { data: addresses = [], isSuccess } = useQuery({
@@ -67,9 +69,9 @@ export function CheckoutForm() {
       }
 
       const res: any = await apiPost('/orders', payload);
-      
+
       await apiPost(`/payments/${res.id}/process`, {
-        amount: total,
+        amount: Number(res.total), // use server-calculated total to guarantee match
         paymentMethod: paymentMethod,
         providerToken: paymentMethod === 'COD' ? 'cod' : 'mock_stripe_token_abc123'
       });
@@ -273,7 +275,7 @@ export function CheckoutForm() {
             <div className="pt-8 border-t border-slate-100 flex flex-col-reverse sm:flex-row gap-4">
               <Button type="button" variant="outline" onClick={() => setStep(1)} className="w-full sm:w-1/3 h-14 rounded-xl font-bold border-2 border-slate-200" size="lg">Back to Shipping</Button>
               <Button type="button" onClick={handleCheckout} disabled={createOrder.isPending} className="w-full sm:w-2/3 h-14 rounded-xl font-bold shadow-xl shadow-primary/20 text-lg transition-transform hover:-translate-y-0.5" size="lg">
-                {createOrder.isPending ? 'Processing Securely...' : `Pay $${total.toFixed(2)}`}
+                {createOrder.isPending ? 'Processing Securely...' : `Pay ${formatPrice(total)}`}
               </Button>
             </div>
             

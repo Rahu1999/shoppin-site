@@ -16,14 +16,12 @@ apiClient.interceptors.request.use((config) => {
     config.headers.Authorization = `Bearer ${token}`;
   }
 
-  // Handle guest cart pseudo-session
+  // Always send x-session-id so cart merge works after login
   const sessionId = typeof window !== 'undefined' ? localStorage.getItem('sessionId') : null;
-  if (!token && sessionId && config.headers) {
+  if (sessionId && config.headers) {
     config.headers['x-session-id'] = sessionId;
-  }
-  
-  if (!token && !sessionId && typeof window !== 'undefined') {
-    // initialize guest session
+  } else if (!sessionId && typeof window !== 'undefined') {
+    // Initialize guest session
     const newSessionId = crypto.randomUUID();
     localStorage.setItem('sessionId', newSessionId);
     if (config.headers) config.headers['x-session-id'] = newSessionId;

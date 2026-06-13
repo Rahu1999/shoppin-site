@@ -3,6 +3,7 @@
 import { useSearchParams } from 'next/navigation';
 import { useQuery } from '@tanstack/react-query';
 import { apiGet } from '@/services/apiClient';
+import { useAddToCart } from '@/hooks/useCart';
 import { ProductCard } from '@/components/product/ProductCard';
 import { Search, Filter, Hash, Loader2 } from 'lucide-react';
 
@@ -11,6 +12,7 @@ import { Suspense } from 'react';
 function SearchContent() {
   const searchParams = useSearchParams();
   const query = searchParams.get('q') || '';
+  const { mutate: addToCart } = useAddToCart();
 
   const { data: productsData, isLoading } = useQuery({
     queryKey: ['products', 'search', query],
@@ -62,7 +64,11 @@ function SearchContent() {
             ) : (
               <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 xl:grid-cols-4 gap-6 xl:gap-8">
                 {productsData?.items?.map((product: any) => (
-                  <ProductCard key={product.id} product={product} />
+                  <ProductCard
+                    key={product.id}
+                    product={product}
+                    onAddToCart={(id) => addToCart({ productId: id, quantity: 1 })}
+                  />
                 ))}
               </div>
             )}

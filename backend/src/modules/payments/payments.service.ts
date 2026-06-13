@@ -18,7 +18,7 @@ export class PaymentsService {
     if (order.status !== OrderStatus.PENDING) throw AppError.badRequest('Order is not in a pending state for payment');
 
     // Simulate payment processing latency
-    if (data.amount !== Number(order.total)) {
+    if (Math.abs(data.amount - Number(order.total)) > 0.01) {
       throw AppError.badRequest('Payment amount does not match order total');
     }
 
@@ -49,8 +49,8 @@ export class PaymentsService {
       return payment;
     }
 
-    // Fake external success (90% success rate mock for online payments)
-    const isSuccess = Math.random() > 0.1;
+    // Mock gateway — always succeeds in development
+    const isSuccess = true;
 
     const payment = this.paymentRepo.create({
       orderId,
