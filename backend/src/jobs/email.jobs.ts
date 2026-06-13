@@ -1,41 +1,50 @@
+import { sendMail } from '@utils/emailService';
+import { welcomeEmail, orderConfirmationEmail, passwordResetEmail } from '@utils/emailTemplates';
 import { logger } from '../config/logger';
 
-// Mock Email Worker
-// In production, this would use a real queue system like BullMQ with Redis and an email provider like SendGrid/AWS SES.
 export class EmailJobs {
-  static async sendOrderConfirmation(email: string, orderId: string, _items: any[], _total: number) {
-    logger.info(`[Email Worker] Processing Order Confirmation for ${email}. Order ID: ${orderId}`);
+  static async sendOrderConfirmation(
+    email: string,
+    orderId: string,
+    items: Array<{ name: string; quantity: number; price: number }>,
+    total: number,
+    opts?: { firstName?: string; shippingAddress?: Record<string, string>; paymentMethod?: string },
+  ) {
     try {
-      // simulate network delay
-      await new Promise((resolve) => setTimeout(resolve, 1000));
-      logger.info(`[Email Worker] Validated email template and dispatched to ${email}.`);
+      const tpl = orderConfirmationEmail({
+        firstName: opts?.firstName || 'Customer',
+        orderId,
+        items,
+        total,
+        shippingAddress: opts?.shippingAddress || {},
+        paymentMethod: opts?.paymentMethod || 'COD',
+      });
+      await sendMail({ to: email, subject: tpl.subject, html: tpl.html });
       return true;
     } catch (e) {
-      logger.error(`[Email Worker] Failed to send order confirmation to ${email}:`, e);
+      logger.error(`[EmailJobs] sendOrderConfirmation failed for ${email}:`, e);
       return false;
     }
   }
 
-  static async sendWelcomeEmail(email: string, name: string) {
-    logger.info(`[Email Worker] Processing Welcome Email for ${email}`);
+  static async sendWelcomeEmail(email: string, firstName: string) {
     try {
-      await new Promise((resolve) => setTimeout(resolve, 500));
-      logger.info(`[Email Worker] Welcome email dispatched to ${name} <${email}>.`);
+      const tpl = welcomeEmail(firstName);
+      await sendMail({ to: email, subject: tpl.subject, html: tpl.html });
       return true;
     } catch (e) {
-       logger.error(`[Email Worker] Failed sending welcome email to ${email}:`, e);
-       return false;
+      logger.error(`[EmailJobs] sendWelcomeEmail failed for ${email}:`, e);
+      return false;
     }
   }
 
-  static async sendPasswordReset(email: string, resetToken: string) {
-    logger.info(`[Email Worker] Processing Password Reset for ${email}`);
+  static async sendPasswordReset(email: string, firstName: string, resetUrl: string) {
     try {
-      await new Promise((resolve) => setTimeout(resolve, 500));
-      logger.info(`[Email Worker] Reset link with token ${resetToken} dispatched to ${email}.`);
+      const tpl = passwordResetEmail({ firstName, resetUrl });
+      await sendMail({ to: email, subject: tpl.subject, html: tpl.html });
       return true;
     } catch (e) {
-      logger.error(`[Email Worker] Failed sending reset link to ${email}:`, e);
+      logger.error(`[EmailJobs] sendPasswordReset failed for ${email}:`, e);
       return false;
     }
   }

@@ -1,3 +1,4 @@
+import crypto from 'crypto';
 import { AppDataSource } from '@config/database';
 import { User } from '@entities/user.entity';
 import { Role } from '@entities/role.entity';
@@ -6,6 +7,8 @@ import { AppError } from '@utils/AppError';
 import { hashPassword, comparePassword } from '@utils/bcrypt';
 import { signAccessToken, signRefreshToken, verifyRefreshToken } from '@utils/jwt';
 import { logAuth } from '@config/logger';
+import { sendMail } from '@utils/emailService';
+import { welcomeEmail, passwordResetEmail } from '@utils/emailTemplates';
 
 export class AuthService {
   private userRepo = AppDataSource.getRepository(User);
@@ -17,8 +20,7 @@ export class AuthService {
     if (existing) throw AppError.conflict('Email already in use');
 
     const hashedPassword = await hashPassword(dto.password);
-    
-    // Default role 'customer'
+
     let customerRole = await this.roleRepo.findOneBy({ name: 'customer' });
     if (!customerRole) {
       customerRole = this.roleRepo.create({ name: 'customer', description: 'Standard user' });
@@ -45,9 +47,13 @@ export class AuthService {
       await queryRunner.manager.save(userRole);
 
       await queryRunner.commitTransaction();
-      
+
       logAuth('REGISTER_SUCCESS', user.id, { email: user.email });
-      
+
+      // Send welcome email (fire and forget)
+      const tpl = welcomeEmail(user.firstName);
+      sendMail({ to: user.email, subject: tpl.subject, html: tpl.html });
+
       const tokens = await this.generateTokens(user.id, ['customer'], user.email);
       return { user: { id: user.id, email: user.email, firstName: user.firstName, lastName: user.lastName }, ...tokens };
     } catch (error) {
@@ -78,7 +84,7 @@ export class AuthService {
     const tokens = await this.generateTokens(user.id, roles, user.email);
 
     user.lastLoginAt = new Date();
-    user.refreshToken = tokens.refreshToken; // save active session
+    user.refreshToken = tokens.refreshToken;
     await this.userRepo.save(user);
 
     logAuth('LOGIN_SUCCESS', user.id);
@@ -120,6 +126,48 @@ export class AuthService {
   public async logout(userId: string) {
     await this.userRepo.update(userId, { refreshToken: undefined });
     logAuth('LOGOUT', userId);
+  }
+
+  public async forgotPassword(email: string) {
+    const user = await this.userRepo.findOneBy({ email });
+    // Always return success — never reveal whether an email exists
+    if (!user) return;
+
+    const rawToken = crypto.randomBytes(32).toString('hex');
+    const hashedToken = crypto.createHash('sha256').update(rawToken).digest('hex');
+    const expiry = new Date(Date.now() + 60 * 60 * 1000); // 1 hour
+
+    await this.userRepo.update(user.id, {
+      passwordResetToken: hashedToken,
+      passwordResetExpires: expiry,
+    });
+
+    const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:3000';
+    const resetUrl = `${frontendUrl}/reset-password?token=${rawToken}`;
+    const tpl = passwordResetEmail({ firstName: user.firstName, resetUrl });
+    sendMail({ to: user.email, subject: tpl.subject, html: tpl.html });
+  }
+
+  public async resetPassword(rawToken: string, newPassword: string) {
+    const hashedToken = crypto.createHash('sha256').update(rawToken).digest('hex');
+
+    const user = await this.userRepo
+      .createQueryBuilder('u')
+      .addSelect('u.passwordResetToken')
+      .addSelect('u.passwordResetExpires')
+      .where('u.passwordResetToken = :token', { token: hashedToken })
+      .andWhere('u.passwordResetExpires > :now', { now: new Date() })
+      .getOne();
+
+    if (!user) throw AppError.badRequest('Invalid or expired reset token');
+
+    const hashedPassword = await hashPassword(newPassword);
+    user.passwordHash = hashedPassword;
+    user.passwordResetToken = undefined;
+    user.passwordResetExpires = undefined;
+    await this.userRepo.save(user);
+
+    return { message: 'Password reset successful' };
   }
 
   private async generateTokens(userId: string, roles: string[], email: string) {

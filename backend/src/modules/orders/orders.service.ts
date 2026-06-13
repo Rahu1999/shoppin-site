@@ -6,9 +6,12 @@ import { Cart } from '@entities/cart.entity';
 import { Address } from '@entities/address.entity';
 import { Coupon } from '@entities/coupon.entity';
 import { Inventory } from '@entities/inventory.entity';
+import { User } from '@entities/user.entity';
 import { AppError } from '@utils/AppError';
 import { getPaginationParams, buildPaginationMeta } from '@utils/pagination';
 import { OrderStatus } from '@entities/order-status.enum';
+import { sendMail } from '@utils/emailService';
+import { orderConfirmationEmail, orderStatusEmail } from '@utils/emailTemplates';
 
 export class OrdersService {
   private orderRepo = AppDataSource.getRepository(Order);
@@ -17,6 +20,7 @@ export class OrdersService {
   private addressRepo = AppDataSource.getRepository(Address);
   private couponRepo = AppDataSource.getRepository(Coupon);
   private inventoryRepo = AppDataSource.getRepository(Inventory);
+  private userRepo = AppDataSource.getRepository(User);
 
   public async checkout(userId: string, data: Record<string, any>) {
     const cart = await this.cartRepo.findOne({
@@ -36,13 +40,12 @@ export class OrdersService {
       shippingAddress = { ...savedAddress };
     }
 
-    let billingAddress = data.billingAddress || shippingAddress;
+    const billingAddress = data.billingAddress || shippingAddress;
 
     // Calculate Totals
     let subtotal = 0;
     cart.items.forEach(item => {
       if (!item.product && !item.variant) {
-        // Fallback to item.price if product relation failed to load
         subtotal += Number(item.price || 0) * item.quantity;
         return;
       }
@@ -52,13 +55,13 @@ export class OrdersService {
 
     let discount = 0;
     let coupon: Coupon | null = null;
-    
+
     if (data.couponCode) {
       coupon = await this.couponRepo.findOneBy({ code: data.couponCode, isActive: true });
       if (!coupon || !coupon.isValid) {
         throw AppError.badRequest('Invalid or expired coupon', undefined);
       }
-      
+
       if (coupon.minOrderValue && subtotal < Number(coupon.minOrderValue)) {
         throw AppError.badRequest(`Minimum order value is ${coupon.minOrderValue}`);
       }
@@ -68,17 +71,16 @@ export class OrdersService {
       } else {
         discount = subtotal * (Number(coupon.value) / 100);
       }
-      
+
       if (coupon.maxDiscount && discount > Number(coupon.maxDiscount)) {
         discount = Number(coupon.maxDiscount);
       }
     }
 
-    const shippingFee = 0; // Matching frontend "Free" shipping
-    const tax = 0; // Matching frontend "No Tax" display
+    const shippingFee = 0;
+    const tax = 0;
     const total = subtotal - discount + shippingFee + tax;
 
-    // Transaction to safely create order, deduct inventory, and clear cart
     const queryRunner = AppDataSource.createQueryRunner();
     await queryRunner.connect();
     await queryRunner.startTransaction();
@@ -117,10 +119,10 @@ export class OrdersService {
 
       // 3. Create Order Items
       const orderItems = cart.items.map(item => {
-        const name = item.variant 
-          ? `${item.product?.name || 'Unknown'} - ${item.variant.name}` 
+        const name = item.variant
+          ? `${item.product?.name || 'Unknown'} - ${item.variant.name}`
           : (item.product?.name || 'Product ' + item.productId);
-        
+
         const sku = item.variant ? item.variant.sku : item.product?.sku;
         const price = item.variant ? item.variant.price : (item.product?.basePrice || item.price);
 
@@ -155,7 +157,28 @@ export class OrdersService {
       await queryRunner.manager.delete(Cart, { id: cart.id });
 
       await queryRunner.commitTransaction();
-      return this.orderRepo.findOne({ where: { id: order.id }, relations: ['items'] });
+
+      const completedOrder = await this.orderRepo.findOne({ where: { id: order.id }, relations: ['items'] });
+
+      // Send order confirmation email (fire and forget)
+      const user = await this.userRepo.findOneBy({ id: userId });
+      if (completedOrder && user) {
+        const tpl = orderConfirmationEmail({
+          firstName: user.firstName,
+          orderId: completedOrder.id,
+          items: (completedOrder.items || []).map(i => ({
+            name: i.name,
+            quantity: i.quantity,
+            price: Number(i.price),
+          })),
+          total: Number(completedOrder.total),
+          shippingAddress: shippingAddress as Record<string, string>,
+          paymentMethod: data.paymentMethod || 'COD',
+        });
+        sendMail({ to: user.email, subject: tpl.subject, html: tpl.html });
+      }
+
+      return completedOrder;
     } catch (err) {
       await queryRunner.rollbackTransaction();
       throw err;
@@ -208,7 +231,10 @@ export class OrdersService {
   }
 
   public async updateOrderStatus(orderId: string, status: OrderStatus, adminId: string, notes?: string) {
-    const order = await this.orderRepo.findOneBy({ id: orderId });
+    const order = await this.orderRepo.findOne({
+      where: { id: orderId },
+      relations: ['user'],
+    });
     if (!order) throw AppError.notFound('Order');
 
     order.status = status;
@@ -221,6 +247,17 @@ export class OrdersService {
       changedById: adminId,
     });
     await this.orderHistoryRepo.save(history);
+
+    // Send status update email to customer (fire and forget)
+    if (order.user) {
+      const tpl = orderStatusEmail({
+        firstName: order.user.firstName,
+        orderId: order.id,
+        status,
+        notes,
+      });
+      if (tpl) sendMail({ to: order.user.email, subject: tpl.subject, html: tpl.html });
+    }
 
     return order;
   }

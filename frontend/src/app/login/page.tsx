@@ -84,8 +84,8 @@ function LoginContent() {
           <div className="space-y-2">
             <div className="flex items-center justify-between">
               <label className="text-sm font-bold text-slate-700">Password</label>
-              <Link href="#" className="text-sm font-bold text-primary hover:text-primary/80 transition-colors">
-                Forgot parameters?
+              <Link href="/forgot-password" className="text-sm font-bold text-primary hover:text-primary/80 transition-colors">
+                Forgot password?
               </Link>
             </div>
             <div className="relative group">

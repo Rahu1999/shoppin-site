@@ -41,4 +41,24 @@ export class AuthController {
       next(error);
     }
   };
+
+  public forgotPassword = async (req: Request, res: Response, next: NextFunction) => {
+    try {
+      await this.authService.forgotPassword(req.body.email);
+      // Always return 200 — never reveal whether the email exists
+      return successResponse(res, null, 'If an account with that email exists, a reset link has been sent.');
+    } catch (error) {
+      next(error);
+    }
+  };
+
+  public resetPassword = async (req: Request, res: Response, next: NextFunction) => {
+    try {
+      const { token, newPassword } = req.body;
+      const result = await this.authService.resetPassword(token, newPassword);
+      return successResponse(res, result, result.message);
+    } catch (error) {
+      next(error);
+    }
+  };
 }
