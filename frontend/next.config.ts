@@ -1,12 +1,14 @@
 import type { NextConfig } from "next";
 
 const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000/v1';
-// BACKEND_INTERNAL_URL is the direct backend address (never goes through nginx).
-// Set this to http://localhost:5000 in production so the rewrite hits the backend
-// directly instead of looping back through nginx → Next.js infinitely.
+// In production, default to the local backend port so the rewrite proxies
+// internally (Next.js → backend on 5000) instead of looping back through nginx.
+// Override with BACKEND_INTERNAL_URL if backend runs on a different address.
 const backendBase =
   process.env.BACKEND_INTERNAL_URL ||
-  apiUrl.replace(/\/(?:api\/)?v\d+\/?$/, '');
+  (process.env.NODE_ENV === 'production'
+    ? 'http://localhost:5000'
+    : apiUrl.replace(/\/(?:api\/)?v\d+\/?$/, ''));
 const uploadsDestination = backendBase + '/uploads/:path*';
 
 const nextConfig: NextConfig = {
