@@ -16,9 +16,9 @@ router.post('/', authMiddleware, requireAdmin, upload.array('images', 5), (req: 
     });
   }
 
-  // Generate full URLs
-  const protocol = req.protocol;
-  const host = req.get('host');
+  // Use x-forwarded-proto so URLs are HTTPS when behind nginx SSL termination
+  const protocol = req.get('x-forwarded-proto') || req.protocol;
+  const host = req.get('x-forwarded-host') || req.get('host');
   const urls = files.map(file => `${protocol}://${host}/uploads/${file.filename}`);
 
   return successResponse(res, { urls }, 'Files uploaded successfully');
