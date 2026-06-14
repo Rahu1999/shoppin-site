@@ -31,13 +31,13 @@ export default function CheckoutPage() {
           <Lock className="h-4 w-4" /> 256-bit SSL encrypted checkout
         </p>
         
-        <div className="lg:grid lg:grid-cols-12 lg:gap-10 xl:gap-14 lg:items-start">
-          <div className="lg:col-span-7 space-y-6">
+        <div className={`lg:grid lg:gap-10 xl:gap-14 lg:items-start ${items.length > 0 ? 'lg:grid-cols-12' : ''}`}>
+          <div className={items.length > 0 ? 'lg:col-span-7 space-y-6' : 'max-w-xl mx-auto w-full'}>
             <CheckoutForm />
           </div>
 
-          {/* Order Summary Sidebar */}
-          <div className="lg:col-span-5 mt-8 lg:mt-0">
+          {/* Order Summary Sidebar — hidden after order is placed */}
+          {items.length > 0 && <div className="lg:col-span-5 mt-8 lg:mt-0">
             <div className="bg-white border text-left border-slate-100 rounded-3xl overflow-hidden shadow-sm sticky top-24">
               <div className="p-6 sm:p-8 bg-slate-50/50 border-b border-slate-100 flex justify-between items-center">
                  <h3 className="font-black text-xl text-slate-900">Order Summary</h3>
@@ -92,7 +92,7 @@ export default function CheckoutPage() {
                  </div>
                </div>
             </div>
-          </div>
+          </div>}
         </div>
       </div>
     </div>

@@ -8,285 +8,478 @@ import { apiPost } from '@/services/apiClient';
 import { formatPrice } from '@/utils/price';
 import { useMutation, useQuery } from '@tanstack/react-query';
 import { useRouter } from 'next/navigation';
-import { CheckCircle2, CreditCard, MapPin, Plus, Navigation } from 'lucide-react';
+import { CheckCircle2, MapPin, Navigation, Plus, Banknote, CreditCard, ChevronDown, ChevronUp } from 'lucide-react';
 import { useAuthStore } from '@/store/authStore';
-import { getAddresses } from '@/services/userService';
+import { getAddresses, addAddress, Address } from '@/services/userService';
+import { toast } from 'sonner';
+
+const INDIAN_STATES = [
+  'Andhra Pradesh','Arunachal Pradesh','Assam','Bihar','Chhattisgarh','Goa','Gujarat',
+  'Haryana','Himachal Pradesh','Jharkhand','Karnataka','Kerala','Madhya Pradesh',
+  'Maharashtra','Manipur','Meghalaya','Mizoram','Nagaland','Odisha','Punjab',
+  'Rajasthan','Sikkim','Tamil Nadu','Telangana','Tripura','Uttar Pradesh',
+  'Uttarakhand','West Bengal',
+  // UTs
+  'Delhi','Chandigarh','Jammu & Kashmir','Ladakh','Puducherry',
+  'Andaman & Nicobar Islands','Dadra & Nagar Haveli and Daman & Diu','Lakshadweep',
+];
+
+const FIELD = 'h-12 bg-white rounded-xl border-slate-200 text-sm';
+const SELECT = 'w-full h-12 px-3 rounded-xl border border-slate-200 bg-white text-sm text-slate-800 focus:outline-none focus:ring-2 focus:ring-primary/30 transition-all';
 
 export function CheckoutForm() {
   const { items, total, clear } = useCartStore();
-  const { user } = useAuthStore();
+  const { user, isAuthenticated } = useAuthStore();
   const router = useRouter();
 
-  const [step, setStep] = useState<1 | 2 | 3>(1);
-  const [shippingAddress, setShippingAddress] = useState({
-    street: '', city: '', state: '', zip: '', country: 'India', phone: ''
-  });
+  const [confirmed, setConfirmed] = useState(false);
+  const [confirmedData, setConfirmedData] = useState<{ orderId: string; total: number; method: string } | null>(null);
   const [selectedAddressId, setSelectedAddressId] = useState<string | null>(null);
-  // Show new address form immediately if user is not logged in or has no saved addresses
-  const [showNewAddressForm, setShowNewAddressForm] = useState(!user);
-  const [paymentMethod, setPaymentMethod] = useState<'CREDIT_CARD' | 'PAYPAL' | 'COD'>('CREDIT_CARD');
-  
-  const { data: addresses = [], isSuccess } = useQuery({
-    queryKey: ['addresses'],
-    queryFn: getAddresses,
-    enabled: !!user,
+  const [showNewForm, setShowNewForm] = useState(false);
+  const [saveToAccount, setSaveToAccount] = useState(true);
+  const [paymentMethod, setPaymentMethod] = useState<'COD' | 'ONLINE'>('COD');
+
+  const [newAddr, setNewAddr] = useState({
+    fullName: '',
+    phone: '',
+    line1: '',
+    line2: '',
+    city: '',
+    state: '',
+    postalCode: '',
+    country: 'India',
   });
 
-  // Set default address if available once addresses are loaded
+  const { data: addresses = [], isSuccess, isLoading: addressesLoading } = useQuery({
+    queryKey: ['addresses'],
+    queryFn: getAddresses,
+    enabled: isAuthenticated,   // token is in localStorage immediately; user object may be null on refresh
+  });
+
+  // Pre-fill name from user account
   useEffect(() => {
-    if (isSuccess && addresses.length > 0) {
-      const defaultAddr = addresses.find(a => a.isDefault && a.type === 'shipping');
-      if (defaultAddr) {
-        setSelectedAddressId(defaultAddr.id);
-        setShowNewAddressForm(false);
-      } else {
-        setSelectedAddressId(addresses[0].id);
-        setShowNewAddressForm(false);
-      }
-    } else if (isSuccess && addresses.length === 0) {
-      setShowNewAddressForm(true);
+    if (user) {
+      setNewAddr(prev => ({
+        ...prev,
+        fullName: `${user.firstName} ${user.lastName}`.trim(),
+      }));
+    }
+  }, [user]);
+
+  // Auto-select default / first saved address
+  useEffect(() => {
+    if (!isSuccess) return;
+    if (addresses.length > 0) {
+      const def = addresses.find(a => a.isDefault) || addresses[0];
+      setSelectedAddressId(def.id);
+      setShowNewForm(false);
+    } else {
+      setShowNewForm(true);
     }
   }, [addresses, isSuccess]);
 
-  const createOrder = useMutation({
+  const placeOrder = useMutation({
     mutationFn: async () => {
+      // Optionally save the new address before placing order
+      if (showNewForm && saveToAccount) {
+        try {
+          await addAddress({
+            ...newAddr,
+            type: 'shipping',
+            isDefault: addresses.length === 0,
+          } as Omit<Address, 'id'>);
+        } catch {
+          // Don't block order if address save fails
+        }
+      }
+
       const payload: any = {
-        items: items.map(i => ({ productId: i.productId, quantity: i.quantity, price: i.price }))
+        items: items.map(i => ({ productId: i.productId, quantity: i.quantity, price: i.price })),
       };
 
-      if (!showNewAddressForm && selectedAddressId) {
+      if (!showNewForm && selectedAddressId) {
         payload.shippingAddressId = selectedAddressId;
       } else {
         payload.shippingAddress = {
-          fullName: user?.firstName + ' ' + user?.lastName,
-          phone: shippingAddress.phone || '0000000000',
-          line1: shippingAddress.street,
-          city: shippingAddress.city,
-          state: shippingAddress.state,
-          postalCode: shippingAddress.zip,
-          country: shippingAddress.country
+          fullName: newAddr.fullName,
+          phone: newAddr.phone,
+          line1: newAddr.line1,
+          line2: newAddr.line2 || undefined,
+          city: newAddr.city,
+          state: newAddr.state,
+          postalCode: newAddr.postalCode,
+          country: newAddr.country,
         };
       }
 
       const res: any = await apiPost('/orders', payload);
 
       await apiPost(`/payments/${res.id}/process`, {
-        amount: Number(res.total), // use server-calculated total to guarantee match
-        paymentMethod: paymentMethod,
-        providerToken: paymentMethod === 'COD' ? 'cod' : 'mock_stripe_token_abc123'
+        amount: Number(res.total),
+        paymentMethod: paymentMethod === 'COD' ? 'COD' : 'CREDIT_CARD',
+        providerToken: paymentMethod === 'COD' ? 'cod' : 'mock_stripe_token_abc123',
       });
 
       return res;
     },
-    onSuccess: () => {
+    onSuccess: (res: any) => {
+      // Capture total from server before clearing cart
+      setConfirmedData({
+        orderId: res.id,
+        total: Number(res.total ?? res.totalAmount ?? total),
+        method: paymentMethod,
+      });
       clear();
-      setStep(3);
-    }
+      setConfirmed(true);
+    },
+    onError: (err: any) => {
+      const msg = err?.response?.data?.message || 'Failed to place order. Please try again.';
+      toast.error(msg);
+    },
   });
 
-  const handleNextStep = (e: React.FormEvent) => {
-    e.preventDefault();
-    setStep(2);
-  };
-
-  const handleCheckout = () => {
-    createOrder.mutate();
-  };
-
-  if (items.length === 0 && step !== 3) {
+  // ── Empty cart ──────────────────────────────────────────────────────────────
+  if (items.length === 0 && !confirmed) {
     return (
       <div className="bg-white rounded-3xl p-12 text-center shadow-sm border border-slate-100">
-         <h2 className="text-2xl font-bold text-slate-900 mb-2">Cart is Empty</h2>
-         <p className="text-slate-500 mb-6">Please add items to your cart before checking out.</p>
-         <Button onClick={() => router.push('/products')} size="lg" className="rounded-xl">Go to Shop</Button>
+        <h2 className="text-2xl font-bold text-slate-900 mb-2">Cart is Empty</h2>
+        <p className="text-slate-500 mb-6">Please add items to your cart before checking out.</p>
+        <Button onClick={() => router.push('/products')} size="lg" className="rounded-xl">Go to Shop</Button>
       </div>
     );
   }
 
-  if (step === 3) {
+  // ── Confirmation ────────────────────────────────────────────────────────────
+  if (confirmed && confirmedData) {
     return (
-      <div className="bg-white rounded-3xl shadow-sm border border-slate-100 p-12 text-center flex flex-col items-center">
-        <div className="h-24 w-24 bg-green-50 rounded-full flex items-center justify-center mb-6 shadow-inner ring-8 ring-green-50/50">
-          <CheckCircle2 className="h-12 w-12 text-green-500" />
+      <div className="bg-white rounded-3xl shadow-sm border border-slate-100 overflow-hidden">
+        {/* Green header */}
+        <div className="bg-green-50 border-b border-green-100 px-8 py-10 flex flex-col items-center text-center">
+          <div className="h-20 w-20 bg-white rounded-full flex items-center justify-center mb-4 shadow-md ring-4 ring-green-100">
+            <CheckCircle2 className="h-10 w-10 text-green-500" />
+          </div>
+          <h2 className="text-2xl font-black tracking-tight text-slate-900 mb-1">Order Confirmed!</h2>
+          <p className="text-slate-500 text-sm font-medium">
+            Order <span className="font-bold text-slate-700">#{confirmedData.orderId.slice(0, 8).toUpperCase()}</span>
+          </p>
         </div>
-        <h2 className="text-3xl font-black tracking-tight text-slate-900 mb-2">Order Confirmed!</h2>
-        <p className="text-slate-500 text-lg max-w-md mb-8">Thank you for your purchase. We've received your order and will begin processing it shortly. You will receive an email confirmation.</p>
-        <Button onClick={() => router.push('/products')} size="lg" className="h-14 px-8 font-bold shadow-xl shadow-primary/20 rounded-2xl">
-          Continue Shopping
-        </Button>
+
+        {/* Summary rows */}
+        <div className="px-8 py-6 space-y-3 border-b border-slate-100">
+          <div className="flex justify-between items-center text-sm">
+            <span className="text-slate-500 font-medium">Subtotal</span>
+            <span className="font-bold text-slate-900">{formatPrice(confirmedData.total)}</span>
+          </div>
+          <div className="flex justify-between items-center text-sm">
+            <span className="text-slate-500 font-medium">Shipping</span>
+            <span className="font-bold text-green-600">Free</span>
+          </div>
+          <div className="flex justify-between items-center pt-3 border-t border-slate-100">
+            <span className="font-bold text-slate-900">Total Paid</span>
+            <span className="text-2xl font-black text-primary tracking-tight">{formatPrice(confirmedData.total)}</span>
+          </div>
+          <div className="flex justify-between items-center text-sm">
+            <span className="text-slate-500 font-medium">Payment</span>
+            <span className="font-bold text-slate-700">
+              {confirmedData.method === 'COD' ? 'Cash on Delivery' : 'Online Payment'}
+            </span>
+          </div>
+        </div>
+
+        <div className="px-8 py-6">
+          <p className="text-sm text-slate-500 mb-5 text-center">
+            You'll receive an email confirmation shortly. We'll notify you when your order ships.
+          </p>
+          <div className="flex flex-col sm:flex-row gap-3">
+            <Button variant="outline" onClick={() => router.push('/orders')} className="flex-1 h-12 rounded-xl font-bold">
+              View My Orders
+            </Button>
+            <Button onClick={() => router.push('/products')} className="flex-1 h-12 rounded-xl font-bold shadow-lg shadow-primary/20">
+              Continue Shopping
+            </Button>
+          </div>
+        </div>
       </div>
     );
   }
 
-  return (
-    <div className="bg-white rounded-3xl shadow-sm border border-slate-100 overflow-hidden">
-      {/* Modern Stepper Header */}
-      <div className="bg-slate-50 border-b border-slate-100 px-8 py-6">
-        <div className="flex items-center max-w-sm mx-auto">
-          <div className="flex flex-col items-center gap-2">
-             <div className={`w-8 h-8 rounded-full flex items-center justify-center font-bold text-sm transition-colors ${step >= 1 ? 'bg-primary text-white shadow-md shadow-primary/20' : 'bg-slate-200 text-slate-500'}`}>1</div>
-             <span className={`text-xs font-bold uppercase tracking-widest ${step >= 1 ? 'text-primary' : 'text-slate-400'}`}>Shipping</span>
-          </div>
-          <div className={`flex-1 h-1 mx-4 rounded-full transition-colors ${step >= 2 ? 'bg-primary/30' : 'bg-slate-200'}`}>
-            <div className={`h-full bg-primary rounded-full transition-all duration-500 ${step >= 2 ? 'w-full' : 'w-0'}`} />
-          </div>
-          <div className="flex flex-col items-center gap-2">
-             <div className={`w-8 h-8 rounded-full flex items-center justify-center font-bold text-sm transition-colors ${step >= 2 ? 'bg-primary text-white shadow-md shadow-primary/20' : 'bg-slate-200 text-slate-500'}`}>2</div>
-             <span className={`text-xs font-bold uppercase tracking-widest ${step >= 2 ? 'text-primary' : 'text-slate-400'}`}>Payment</span>
-          </div>
-        </div>
-      </div>
+  // ── Address validity check ──────────────────────────────────────────────────
+  const newFormFilled = !!(
+    newAddr.fullName && newAddr.phone && newAddr.line1 &&
+    newAddr.city && newAddr.state && newAddr.postalCode
+  );
+  const canPlaceOrder = showNewForm ? newFormFilled : !!selectedAddressId;
 
-      <div className="p-6 md:p-10">
-        {step === 1 && (
-          <form onSubmit={handleNextStep} className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-500 text-left">
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-2">
-              <h2 className="text-xl font-black text-slate-900 flex items-center gap-2">
-                <MapPin className="h-6 w-6 text-primary" /> Delivery Address
-              </h2>
-              {addresses.length > 0 && (
-                <button 
-                  type="button"
-                  onClick={() => setShowNewAddressForm(!showNewAddressForm)}
-                  className="text-sm font-bold text-primary hover:underline flex items-center gap-1.5 bg-primary/5 px-3 py-1.5 rounded-lg transition-colors hover:bg-primary/10 w-fit"
+  // ── Main checkout ───────────────────────────────────────────────────────────
+  return (
+    <div className="space-y-5">
+
+      {/* ── Delivery Address ── */}
+      <div className="bg-white rounded-3xl shadow-sm border border-slate-100 overflow-hidden">
+        <div className="px-6 py-5 border-b border-slate-100 flex items-center justify-between">
+          <h2 className="font-black text-lg text-slate-900 flex items-center gap-2">
+            <MapPin className="h-5 w-5 text-primary" /> Delivery Address
+          </h2>
+          {addresses.length > 0 && (
+            <button
+              type="button"
+              onClick={() => setShowNewForm(v => !v)}
+              className="text-sm font-bold text-primary flex items-center gap-1.5 hover:underline"
+            >
+              {showNewForm ? (
+                <><ChevronUp className="h-4 w-4" /> Saved addresses</>
+              ) : (
+                <><Plus className="h-4 w-4" /> Use different address</>
+              )}
+            </button>
+          )}
+        </div>
+
+        <div className="p-6">
+          {/* Loading skeleton while addresses fetch */}
+          {addressesLoading && (
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-3 animate-pulse">
+              {[0, 1].map(i => (
+                <div key={i} className="h-28 bg-slate-100 rounded-2xl" />
+              ))}
+            </div>
+          )}
+
+          {/* Saved address cards */}
+          {!addressesLoading && !showNewForm && addresses.length > 0 && (
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+              {addresses.map(addr => (
+                <label
+                  key={addr.id}
+                  className={`relative flex flex-col p-4 border-2 rounded-2xl cursor-pointer transition-all ${
+                    selectedAddressId === addr.id
+                      ? 'border-primary bg-primary/5 shadow-sm'
+                      : 'border-slate-100 hover:border-slate-300'
+                  }`}
                 >
-                  <Plus className="h-4 w-4" /> {showNewAddressForm ? 'Select Saved Address' : 'Add New Address'}
-                </button>
+                  <input
+                    type="radio"
+                    name="address"
+                    className="hidden"
+                    checked={selectedAddressId === addr.id}
+                    onChange={() => setSelectedAddressId(addr.id)}
+                  />
+                  <div className="flex items-start justify-between gap-2 mb-2">
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <p className="font-bold text-slate-900">{addr.fullName}</p>
+                      {addr.isDefault && (
+                        <span className="text-[10px] bg-primary/10 text-primary px-2 py-0.5 rounded font-black uppercase tracking-widest">
+                          Default
+                        </span>
+                      )}
+                    </div>
+                    <div className={`h-5 w-5 rounded-full border-2 flex items-center justify-center shrink-0 mt-0.5 ${
+                      selectedAddressId === addr.id ? 'border-primary' : 'border-slate-300'
+                    }`}>
+                      {selectedAddressId === addr.id && (
+                        <div className="w-2.5 h-2.5 bg-primary rounded-full" />
+                      )}
+                    </div>
+                  </div>
+                  <p className="text-sm text-slate-600 leading-relaxed">
+                    {addr.line1}{addr.line2 ? `, ${addr.line2}` : ''}<br />
+                    {addr.city}, {addr.state} – {addr.postalCode}
+                  </p>
+                  <p className="text-xs text-slate-400 mt-2 flex items-center gap-1">
+                    <Navigation className="h-3 w-3" /> {addr.phone}
+                  </p>
+                </label>
+              ))}
+            </div>
+          )}
+
+          {/* New address form */}
+          {!addressesLoading && showNewForm && (
+            <div className="space-y-4">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                {/* Full name */}
+                <div className="space-y-1.5">
+                  <label className="text-xs font-bold text-slate-600 uppercase tracking-wide">Full Name</label>
+                  <Input
+                    value={newAddr.fullName}
+                    onChange={e => setNewAddr(p => ({ ...p, fullName: e.target.value }))}
+                    placeholder="Rahul Sharma"
+                    className={FIELD}
+                    required
+                  />
+                </div>
+                {/* Phone */}
+                <div className="space-y-1.5">
+                  <label className="text-xs font-bold text-slate-600 uppercase tracking-wide">Mobile Number</label>
+                  <Input
+                    type="tel"
+                    value={newAddr.phone}
+                    onChange={e => setNewAddr(p => ({ ...p, phone: e.target.value }))}
+                    placeholder="9870212660"
+                    maxLength={10}
+                    className={FIELD}
+                    required
+                  />
+                </div>
+                {/* Address line 1 */}
+                <div className="md:col-span-2 space-y-1.5">
+                  <label className="text-xs font-bold text-slate-600 uppercase tracking-wide">Flat / House No., Street, Area</label>
+                  <Input
+                    value={newAddr.line1}
+                    onChange={e => setNewAddr(p => ({ ...p, line1: e.target.value }))}
+                    placeholder="12B, Sonawala Road, Goregaon East"
+                    className={FIELD}
+                    required
+                  />
+                </div>
+                {/* Address line 2 */}
+                <div className="md:col-span-2 space-y-1.5">
+                  <label className="text-xs font-bold text-slate-600 uppercase tracking-wide">Landmark <span className="text-slate-400 normal-case font-normal">(optional)</span></label>
+                  <Input
+                    value={newAddr.line2}
+                    onChange={e => setNewAddr(p => ({ ...p, line2: e.target.value }))}
+                    placeholder="Near Oberoi Mall"
+                    className={FIELD}
+                  />
+                </div>
+                {/* City */}
+                <div className="space-y-1.5">
+                  <label className="text-xs font-bold text-slate-600 uppercase tracking-wide">City</label>
+                  <Input
+                    value={newAddr.city}
+                    onChange={e => setNewAddr(p => ({ ...p, city: e.target.value }))}
+                    placeholder="Mumbai"
+                    className={FIELD}
+                    required
+                  />
+                </div>
+                {/* Pincode */}
+                <div className="space-y-1.5">
+                  <label className="text-xs font-bold text-slate-600 uppercase tracking-wide">PIN Code</label>
+                  <Input
+                    value={newAddr.postalCode}
+                    onChange={e => setNewAddr(p => ({ ...p, postalCode: e.target.value.replace(/\D/g, '').slice(0, 6) }))}
+                    placeholder="400063"
+                    maxLength={6}
+                    className={FIELD}
+                    required
+                  />
+                </div>
+                {/* State */}
+                <div className="space-y-1.5">
+                  <label className="text-xs font-bold text-slate-600 uppercase tracking-wide">State</label>
+                  <select
+                    value={newAddr.state}
+                    onChange={e => setNewAddr(p => ({ ...p, state: e.target.value }))}
+                    className={SELECT}
+                    required
+                  >
+                    <option value="">Select State</option>
+                    {INDIAN_STATES.map(s => (
+                      <option key={s} value={s}>{s}</option>
+                    ))}
+                  </select>
+                </div>
+                {/* Country — locked */}
+                <div className="space-y-1.5">
+                  <label className="text-xs font-bold text-slate-600 uppercase tracking-wide">Country</label>
+                  <div className="h-12 px-3 rounded-xl border border-slate-200 bg-slate-50 flex items-center text-sm text-slate-500 font-medium select-none">
+                    🇮🇳 India
+                  </div>
+                </div>
+              </div>
+
+              {/* Save to account checkbox */}
+              {user && (
+                <label className="flex items-center gap-2.5 cursor-pointer group w-fit">
+                  <input
+                    type="checkbox"
+                    checked={saveToAccount}
+                    onChange={e => setSaveToAccount(e.target.checked)}
+                    className="h-4 w-4 rounded border-slate-300 text-primary accent-primary cursor-pointer"
+                  />
+                  <span className="text-sm font-medium text-slate-600 group-hover:text-slate-800 transition-colors">
+                    Save this address to my account
+                  </span>
+                </label>
               )}
             </div>
-            
-            {!showNewAddressForm && addresses.length > 0 ? (
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                {addresses.map((addr) => (
-                  <label 
-                    key={addr.id}
-                    className={`relative flex flex-col p-5 border-2 rounded-2xl cursor-pointer transition-all ${selectedAddressId === addr.id ? 'border-primary bg-primary/5 shadow-md shadow-primary/5' : 'border-slate-100 hover:border-slate-300 hover:bg-slate-50'}`}
-                  >
-                    <input 
-                      type="radio" 
-                      name="address" 
-                      className="peer hidden" 
-                      checked={selectedAddressId === addr.id}
-                      onChange={() => setSelectedAddressId(addr.id)}
-                    />
-                    <div className="flex justify-between items-start mb-2">
-                      <div className="flex items-center gap-2">
-                        <p className="font-bold text-slate-900 text-lg">{addr.fullName}</p>
-                        {addr.isDefault && <span className="text-[10px] bg-primary/10 text-primary px-2 py-0.5 rounded font-black uppercase tracking-widest">Default</span>}
-                      </div>
-                      <div className={`w-6 h-6 rounded-full border-2 flex items-center justify-center shrink-0 transition-colors ${selectedAddressId === addr.id ? 'border-primary' : 'border-slate-300 peer-hover:border-slate-400'}`}>
-                        {selectedAddressId === addr.id && <div className="w-3 h-3 bg-primary rounded-full animate-in zoom-in" />}
-                      </div>
-                    </div>
-                    <p className="text-sm text-slate-600 leading-relaxed max-w-[90%]">{addr.line1}, {addr.city}, {addr.state} {addr.postalCode}</p>
-                    <p className="text-sm font-semibold text-slate-500 mt-3 flex items-center gap-1.5"><Navigation className="h-4 w-4" /> {addr.phone}</p>
-                  </label>
-                ))}
-              </div>
-            ) : (
-              <div className="bg-slate-50 p-6 sm:p-8 rounded-2xl border border-slate-100">
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                  <div className="md:col-span-2 space-y-2">
-                    <label className="text-sm font-bold text-slate-700">Street Address</label>
-                    <Input required value={shippingAddress.street} onChange={(e) => setShippingAddress(p => ({...p, street: e.target.value}))} placeholder="123 Main St" className="h-14 bg-white rounded-xl border-slate-200" />
-                  </div>
-                  <div className="space-y-2">
-                    <label className="text-sm font-bold text-slate-700">Phone Number</label>
-                    <Input required value={shippingAddress.phone} onChange={(e) => setShippingAddress(p => ({...p, phone: e.target.value}))} placeholder="+1 (555) 000-0000" className="h-14 bg-white rounded-xl border-slate-200" />
-                  </div>
-                  <div className="space-y-2">
-                    <label className="text-sm font-bold text-slate-700">City</label>
-                    <Input required value={shippingAddress.city} onChange={(e) => setShippingAddress(p => ({...p, city: e.target.value}))} placeholder="New York" className="h-14 bg-white rounded-xl border-slate-200" />
-                  </div>
-                  <div className="space-y-2">
-                    <label className="text-sm font-bold text-slate-700">State / Province</label>
-                    <Input required value={shippingAddress.state} onChange={(e) => setShippingAddress(p => ({...p, state: e.target.value}))} placeholder="NY" className="h-14 bg-white rounded-xl border-slate-200" />
-                  </div>
-                  <div className="space-y-2">
-                    <label className="text-sm font-bold text-slate-700">ZIP / Postal Code</label>
-                    <Input required value={shippingAddress.zip} onChange={(e) => setShippingAddress(p => ({...p, zip: e.target.value}))} placeholder="10001" className="h-14 bg-white rounded-xl border-slate-200" />
-                  </div>
-                  <div className="space-y-2">
-                    <label className="text-sm font-bold text-slate-700">Country</label>
-                    <Input required value={shippingAddress.country} onChange={(e) => setShippingAddress(p => ({...p, country: e.target.value}))} placeholder="US" className="h-14 bg-white rounded-xl border-slate-200" />
-                  </div>
-                </div>
-              </div>
-            )}
-
-            <div className="pt-4 border-t border-slate-100 flex justify-end">
-              <Button type="submit" className="w-full sm:w-auto h-14 px-10 rounded-xl font-bold text-lg shadow-xl shadow-primary/20 hover:-translate-y-0.5 transition-transform" disabled={!showNewAddressForm && !selectedAddressId}>
-                Continue to Payment
-              </Button>
-            </div>
-          </form>
-        )}
-
-        {step === 2 && (
-          <div className="space-y-8 animate-in fade-in slide-in-from-right-4 duration-500">
-            <h2 className="text-xl font-black text-slate-900 flex items-center gap-2 mb-2">
-              <CreditCard className="h-6 w-6 text-primary" /> Select Payment Method
-            </h2>
-
-            <div className="space-y-4">
-              <label 
-                className={`flex gap-5 items-center p-5 border-2 rounded-2xl cursor-pointer transition-all ${paymentMethod === 'CREDIT_CARD' ? 'border-primary bg-primary/5 shadow-md shadow-primary/5' : 'border-slate-100 hover:border-slate-300 hover:bg-slate-50'}`}
-                onClick={() => setPaymentMethod('CREDIT_CARD')}
-              >
-                <div className={`w-6 h-6 rounded-full border-2 flex items-center justify-center ${paymentMethod === 'CREDIT_CARD' ? 'border-primary' : 'border-slate-300'}`}>
-                  {paymentMethod === 'CREDIT_CARD' && <div className="w-3 h-3 bg-primary rounded-full animate-in zoom-in" />}
-                </div>
-                <div>
-                  <p className="font-bold text-slate-900 text-lg">Credit Card</p>
-                  <p className="text-sm text-slate-500">Pay securely with Visa, Mastercard, American Express.</p>
-                </div>
-              </label>
-
-               <label 
-                className={`flex gap-5 items-center p-5 border-2 rounded-2xl cursor-pointer transition-all ${paymentMethod === 'PAYPAL' ? 'border-primary bg-primary/5 shadow-md shadow-primary/5' : 'border-slate-100 hover:border-slate-300 hover:bg-slate-50'}`}
-                onClick={() => setPaymentMethod('PAYPAL')}
-              >
-                <div className={`w-6 h-6 rounded-full border-2 flex items-center justify-center ${paymentMethod === 'PAYPAL' ? 'border-primary' : 'border-slate-300'}`}>
-                  {paymentMethod === 'PAYPAL' && <div className="w-3 h-3 bg-primary rounded-full animate-in zoom-in" />}
-                </div>
-                <div>
-                  <p className="font-bold text-slate-900 text-lg">PayPal</p>
-                  <p className="text-sm text-slate-500">Fast and secure checkout via PayPal.</p>
-                </div>
-              </label>
-
-              <label 
-                className={`flex gap-5 items-center p-5 border-2 rounded-2xl cursor-pointer transition-all ${paymentMethod === 'COD' ? 'border-primary bg-primary/5 shadow-md shadow-primary/5' : 'border-slate-100 hover:border-slate-300 hover:bg-slate-50'}`}
-                onClick={() => setPaymentMethod('COD')}
-              >
-                <div className={`w-6 h-6 rounded-full border-2 flex items-center justify-center ${paymentMethod === 'COD' ? 'border-primary' : 'border-slate-300'}`}>
-                  {paymentMethod === 'COD' && <div className="w-3 h-3 bg-primary rounded-full animate-in zoom-in" />}
-                </div>
-                <div className="flex-1">
-                  <p className="font-bold text-slate-900 text-lg">Cash on Delivery</p>
-                  <p className="text-sm text-slate-500">Pay with cash upon delivery of your order.</p>
-                </div>
-                <div className="bg-slate-900 text-white px-3 py-1 rounded-md text-xs font-black uppercase tracking-widest shadow-sm">
-                  0% Fee
-                </div>
-              </label>
-            </div>
-            
-            <div className="pt-8 border-t border-slate-100 flex flex-col-reverse sm:flex-row gap-4">
-              <Button type="button" variant="outline" onClick={() => setStep(1)} className="w-full sm:w-1/3 h-14 rounded-xl font-bold border-2 border-slate-200" size="lg">Back to Shipping</Button>
-              <Button type="button" onClick={handleCheckout} disabled={createOrder.isPending} className="w-full sm:w-2/3 h-14 rounded-xl font-bold shadow-xl shadow-primary/20 text-lg transition-transform hover:-translate-y-0.5" size="lg">
-                {createOrder.isPending ? 'Processing Securely...' : `Pay ${formatPrice(total)}`}
-              </Button>
-            </div>
-            
-            {createOrder.isError && (
-              <p className="text-rose-500 text-sm font-bold mt-4 p-4 bg-rose-50 rounded-xl border border-rose-100 flex items-center gap-2">
-                <CheckCircle2 className="h-4 w-4 shrink-0 rotate-45" /> Failed to process order. Please try again or use a different payment method.
-              </p>
-            )}
-          </div>
-        )}
+          )}
+        </div>
       </div>
+
+      {/* ── Payment Method ── */}
+      <div className="bg-white rounded-3xl shadow-sm border border-slate-100 overflow-hidden">
+        <div className="px-6 py-5 border-b border-slate-100">
+          <h2 className="font-black text-lg text-slate-900 flex items-center gap-2">
+            <CreditCard className="h-5 w-5 text-primary" /> Payment Method
+          </h2>
+        </div>
+        <div className="p-6 space-y-3">
+
+          {/* COD */}
+          <label
+            onClick={() => setPaymentMethod('COD')}
+            className={`flex items-center gap-4 p-4 border-2 rounded-2xl cursor-pointer transition-all ${
+              paymentMethod === 'COD'
+                ? 'border-primary bg-primary/5 shadow-sm'
+                : 'border-slate-100 hover:border-slate-300'
+            }`}
+          >
+            <div className={`h-5 w-5 rounded-full border-2 flex items-center justify-center shrink-0 ${
+              paymentMethod === 'COD' ? 'border-primary' : 'border-slate-300'
+            }`}>
+              {paymentMethod === 'COD' && <div className="w-2.5 h-2.5 bg-primary rounded-full" />}
+            </div>
+            <Banknote className={`h-6 w-6 shrink-0 ${paymentMethod === 'COD' ? 'text-primary' : 'text-slate-400'}`} />
+            <div className="flex-1">
+              <p className="font-bold text-slate-900">Cash on Delivery</p>
+              <p className="text-xs text-slate-500 mt-0.5">Pay in cash when your order arrives. No extra charges.</p>
+            </div>
+            <span className="shrink-0 text-[10px] font-black bg-slate-900 text-white px-2.5 py-1 rounded-lg uppercase tracking-wide">
+              Recommended
+            </span>
+          </label>
+
+          {/* Online */}
+          <label
+            onClick={() => setPaymentMethod('ONLINE')}
+            className={`flex items-center gap-4 p-4 border-2 rounded-2xl cursor-pointer transition-all ${
+              paymentMethod === 'ONLINE'
+                ? 'border-primary bg-primary/5 shadow-sm'
+                : 'border-slate-100 hover:border-slate-300'
+            }`}
+          >
+            <div className={`h-5 w-5 rounded-full border-2 flex items-center justify-center shrink-0 ${
+              paymentMethod === 'ONLINE' ? 'border-primary' : 'border-slate-300'
+            }`}>
+              {paymentMethod === 'ONLINE' && <div className="w-2.5 h-2.5 bg-primary rounded-full" />}
+            </div>
+            <CreditCard className={`h-6 w-6 shrink-0 ${paymentMethod === 'ONLINE' ? 'text-primary' : 'text-slate-400'}`} />
+            <div className="flex-1">
+              <p className="font-bold text-slate-900">Online Payment</p>
+              <p className="text-xs text-slate-500 mt-0.5">UPI, Debit / Credit Card, Net Banking.</p>
+            </div>
+          </label>
+        </div>
+      </div>
+
+      {/* ── Place Order ── */}
+      <Button
+        type="button"
+        onClick={() => placeOrder.mutate()}
+        disabled={!canPlaceOrder || placeOrder.isPending}
+        className="w-full h-14 rounded-2xl font-bold text-lg shadow-xl shadow-primary/25 hover:-translate-y-0.5 active:translate-y-0 transition-all disabled:translate-y-0"
+        size="lg"
+      >
+        {placeOrder.isPending
+          ? 'Placing your order...'
+          : `Place Order · ${formatPrice(total)}`}
+      </Button>
+
+      {!canPlaceOrder && showNewForm && (
+        <p className="text-center text-xs text-slate-400 -mt-2">Fill in all required address fields to continue.</p>
+      )}
     </div>
   );
 }
