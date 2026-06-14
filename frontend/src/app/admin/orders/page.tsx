@@ -6,8 +6,17 @@ import { Search, Package, Eye } from 'lucide-react';
 import { Input } from '@/components/ui/Input';
 import { formatPrice } from '@/utils/price';
 import Link from 'next/link';
+import { useState } from 'react';
+
+const PAYMENT_BADGE: Record<string, string> = {
+  completed: 'bg-green-100 text-green-700',
+  pending:   'bg-amber-100 text-amber-700',
+  failed:    'bg-red-100 text-red-700',
+};
 
 export default function AdminOrdersPage() {
+  const [search, setSearch] = useState('');
+
   const { data: ordersData, isLoading } = useQuery({
     queryKey: ['adminOrders'],
     queryFn: () => apiGet<any>('/orders/admin/all?limit=100'),
@@ -17,7 +26,18 @@ export default function AdminOrdersPage() {
     return <div className="p-24 flex justify-center"><div className="animate-spin h-8 w-8 border-4 border-primary border-t-transparent rounded-full" /></div>;
   }
 
-  const orders = ordersData?.items || [];
+  const allOrders: any[] = ordersData?.items || [];
+  const orders = search.trim()
+    ? allOrders.filter(o => {
+        const q = search.toLowerCase();
+        const name = `${o.user?.firstName || ''} ${o.user?.lastName || ''}`.toLowerCase();
+        return (
+          o.id.toLowerCase().includes(q) ||
+          name.includes(q) ||
+          (o.user?.email || '').toLowerCase().includes(q)
+        );
+      })
+    : allOrders;
 
   return (
     <div className="space-y-6">
@@ -26,13 +46,19 @@ export default function AdminOrdersPage() {
       </div>
 
       <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
-        
+
         {/* Toolbar */}
         <div className="p-4 border-b border-slate-100 flex gap-4 bg-slate-50/50">
-           <div className="relative flex-1 max-w-md">
-              <Search className="absolute left-3 top-2.5 h-4 w-4 text-slate-400" />
-              <Input type="text" placeholder="Search by Order ID or Customer..." className="pl-9 h-10 w-full bg-white" />
-           </div>
+          <div className="relative flex-1 max-w-md">
+            <Search className="absolute left-3 top-2.5 h-4 w-4 text-slate-400" />
+            <Input
+              type="text"
+              placeholder="Search by Order ID, customer name or email..."
+              className="pl-9 h-10 w-full bg-white"
+              value={search}
+              onChange={e => setSearch(e.target.value)}
+            />
+          </div>
         </div>
 
         {/* Table */}
@@ -50,44 +76,54 @@ export default function AdminOrdersPage() {
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100">
-              {orders.map((order: any) => (
-                <tr key={order.id} className="hover:bg-slate-50/50 transition-colors group">
-                  <td className="px-6 py-4 font-mono font-bold text-slate-900 border-l-2 border-transparent group-hover:border-primary">
-                    <Link href={`/admin/orders/${order.id}`} className="hover:text-primary transition-colors">
-                      #{order.id.slice(0, 8).toUpperCase()}
-                    </Link>
-                  </td>
-                  <td className="px-6 py-4 text-slate-500">{new Date(order.createdAt).toLocaleDateString()}</td>
-                  <td className="px-6 py-4">
-                    <p className="font-semibold text-slate-900">{order.user?.firstName} {order.user?.lastName}</p>
-                    <p className="text-xs text-slate-500">{order.user?.email}</p>
-                  </td>
-                  <td className="px-6 py-4 font-bold text-slate-900">{formatPrice(Number(order.totalAmount || order.total))}</td>
-                  <td className="px-6 py-4">
-                     <span className="px-2 py-1 rounded bg-slate-100 text-xs font-semibold text-slate-600">Paid</span>
-                  </td>
-                  <td className="px-6 py-4">
-                     <span className={`px-2.5 py-1 rounded-full text-xs font-bold uppercase ${
-                       order.status === 'delivered' ? 'bg-green-100 text-green-700' :
-                       order.status === 'shipped' ? 'bg-blue-100 text-blue-700' :
-                       order.status === 'cancelled' ? 'bg-red-100 text-red-700' :
-                       order.status === 'pending' ? 'bg-yellow-100 text-yellow-700' :
-                       'bg-orange-100 text-orange-700'}`}>
+              {orders.map((order: any) => {
+                const payment = order.payments?.[0];
+                const payStatus = payment?.status || (payment?.provider === 'cod' ? 'cod' : 'pending');
+                const payLabel = payStatus === 'completed' ? 'Paid' : payStatus === 'cod' ? 'COD' : payStatus.charAt(0).toUpperCase() + payStatus.slice(1);
+                const payClass = PAYMENT_BADGE[payStatus] || 'bg-slate-100 text-slate-600';
+
+                return (
+                  <tr key={order.id} className="hover:bg-slate-50/50 transition-colors group">
+                    <td className="px-6 py-4 font-mono font-bold text-slate-900 border-l-2 border-transparent group-hover:border-primary">
+                      <Link href={`/admin/orders/${order.id}`} className="hover:text-primary transition-colors">
+                        #{order.id.slice(0, 8).toUpperCase()}
+                      </Link>
+                    </td>
+                    <td className="px-6 py-4 text-slate-500">
+                      {new Date(order.createdAt).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' })}
+                    </td>
+                    <td className="px-6 py-4">
+                      <p className="font-semibold text-slate-900">{order.user?.firstName} {order.user?.lastName}</p>
+                      <p className="text-xs text-slate-500">{order.user?.email}</p>
+                    </td>
+                    <td className="px-6 py-4 font-bold text-slate-900">{formatPrice(Number(order.totalAmount || order.total))}</td>
+                    <td className="px-6 py-4">
+                      <span className={`px-2 py-1 rounded text-xs font-semibold ${payClass}`}>{payLabel}</span>
+                    </td>
+                    <td className="px-6 py-4">
+                      <span className={`px-2.5 py-1 rounded-full text-xs font-bold uppercase ${
+                        order.status === 'delivered'  ? 'bg-green-100 text-green-700'  :
+                        order.status === 'shipped'    ? 'bg-blue-100 text-blue-700'    :
+                        order.status === 'cancelled'  ? 'bg-red-100 text-red-700'      :
+                        order.status === 'pending'    ? 'bg-yellow-100 text-yellow-700':
+                        'bg-orange-100 text-orange-700'
+                      }`}>
                         {order.status}
-                     </span>
-                  </td>
-                  <td className="px-6 py-4 text-right">
-                    <Link href={`/admin/orders/${order.id}`} className="inline-flex p-1.5 text-slate-400 hover:text-primary rounded opacity-0 group-hover:opacity-100 transition-opacity">
-                       <Eye className="h-4 w-4" />
-                    </Link>
-                  </td>
-                </tr>
-              ))}
+                      </span>
+                    </td>
+                    <td className="px-6 py-4 text-right">
+                      <Link href={`/admin/orders/${order.id}`} className="inline-flex p-1.5 text-slate-400 hover:text-primary rounded opacity-0 group-hover:opacity-100 transition-opacity">
+                        <Eye className="h-4 w-4" />
+                      </Link>
+                    </td>
+                  </tr>
+                );
+              })}
               {orders.length === 0 && (
                 <tr>
                   <td colSpan={7} className="px-6 py-12 text-center text-slate-500">
                     <Package className="h-8 w-8 text-slate-300 mx-auto mb-2" />
-                    No orders have been placed yet.
+                    {search ? 'No orders match your search.' : 'No orders have been placed yet.'}
                   </td>
                 </tr>
               )}

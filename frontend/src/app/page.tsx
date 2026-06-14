@@ -313,7 +313,7 @@ export default function Home() {
             <div className="rounded-2xl overflow-hidden border border-gray-200 shadow-sm h-full min-h-[400px] relative bg-white">
               <iframe
                 title={`${BRAND.name} Location`}
-                src="https://www.google.com/maps/embed?pb=!1m18!1m12!1m3!1d3769.314949576713!2d72.84883441490212!3d19.158737387038686!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0x3be7b64a27546419%3A0xc39304a08cf51df9!2sSonawala%20Rd%2C%20Goregaon%20East%2C%20Mumbai%2C%20Maharashtra%20400063!5e0!3m2!1sen!2sin!4v1700000000000!5m2!1sen!2sin"
+                src="https://www.google.com/maps/embed?pb=!1m18!1m12!1m3!1d380.9271929013344!2d72.85156566237642!3d19.159307861777854!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0x3be7b7b331a8a051%3A0xe735c0ece59cf036!2sAmin%20Industrial%20Estate%2C%20Sonawala%20Industry%20Estate%2C%20Goregaon%20East%2C%20Mumbai%2C%20Maharashtra%20400063!5e1!3m2!1sen!2sin!4v1781423654634!5m2!1sen!2sin"
                 width="100%"
                 height="100%"
                 style={{ border: 0 }}

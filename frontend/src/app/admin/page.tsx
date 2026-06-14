@@ -5,6 +5,7 @@ import { apiGet } from '@/services/apiClient';
 import { DollarSign, ShoppingBag, Users, ListOrdered, ArrowUpRight, TrendingUp, Package, ExternalLink } from 'lucide-react';
 import { formatPrice } from '@/utils/price';
 import Link from 'next/link';
+import { useAuthStore } from '@/store/authStore';
 
 const STATUS_CLASSES: Record<string, string> = {
   pending: 'bg-yellow-50 text-yellow-700 border border-yellow-100',
@@ -16,6 +17,8 @@ const STATUS_CLASSES: Record<string, string> = {
 };
 
 export default function AdminDashboardPage() {
+  const user = useAuthStore(s => s.user);
+
   const { data: ordersData } = useQuery({
     queryKey: ['adminOrders', 'dashboard'],
     queryFn: () => apiGet<any>('/orders/admin/all?limit=5'),
@@ -51,7 +54,7 @@ export default function AdminDashboardPage() {
       <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-4">
         <div>
           <h1 className="text-3xl sm:text-4xl font-black tracking-tight text-slate-900 mb-2">Dashboard Overview</h1>
-          <p className="text-slate-500 font-medium">Welcome back, Admin. Here's what's happening with your store today.</p>
+          <p className="text-slate-500 font-medium">Welcome back, {user?.firstName || 'Admin'}. Here's what's happening with your store today.</p>
         </div>
         <div className="flex gap-3">
           <Link href="/admin/orders" className="h-11 px-5 bg-white border border-slate-200 rounded-xl font-bold text-sm text-slate-700 shadow-sm hover:bg-slate-50 transition-colors flex items-center gap-2">
