@@ -285,7 +285,7 @@ export default function OrderDetailPage() {
             <div className="sm:ml-auto sm:w-80 space-y-3">
               <div className="flex justify-between text-sm text-slate-600">
                 <span className="font-medium">Subtotal</span>
-                <span className="font-bold text-slate-900">{formatPrice(orderTotal)}</span>
+                <span className="font-bold text-slate-900">{formatPrice(Number(order.subtotal))}</span>
               </div>
               {Number(order.discount) > 0 && (
                 <div className="flex justify-between text-sm text-emerald-600">
@@ -297,6 +297,12 @@ export default function OrderDetailPage() {
                 <span className="font-medium">Shipping</span>
                 <span className="font-bold text-emerald-600">Free</span>
               </div>
+              {Number(order.tax) > 0 && (
+                <div className="flex justify-between text-sm text-slate-600">
+                  <span className="font-medium">GST ({Number(order.taxRate ?? 0).toFixed(0)}%)</span>
+                  <span className="font-bold text-slate-900">{formatPrice(Number(order.tax))}</span>
+                </div>
+              )}
               <div className="flex justify-between items-center pt-4 border-t border-slate-200">
                 <span className="font-black text-slate-900 text-base">Total Paid</span>
                 <span className="font-black text-primary text-3xl tracking-tight">{formatPrice(orderTotal)}</span>

@@ -8,13 +8,17 @@ export class EmailJobs {
     orderId: string,
     items: Array<{ name: string; quantity: number; price: number }>,
     total: number,
-    opts?: { firstName?: string; shippingAddress?: Record<string, string>; paymentMethod?: string },
+    opts?: { firstName?: string; shippingAddress?: Record<string, string>; paymentMethod?: string; subtotal?: number; tax?: number; taxRate?: number },
   ) {
     try {
+      const subtotal = opts?.subtotal ?? total;
       const tpl = orderConfirmationEmail({
         firstName: opts?.firstName || 'Customer',
         orderId,
         items,
+        subtotal,
+        tax: opts?.tax ?? 0,
+        taxRate: opts?.taxRate ?? 0,
         total,
         shippingAddress: opts?.shippingAddress || {},
         paymentMethod: opts?.paymentMethod || 'COD',

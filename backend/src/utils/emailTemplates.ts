@@ -73,11 +73,14 @@ export function orderConfirmationEmail(opts: {
   firstName: string;
   orderId: string;
   items: Array<{ name: string; quantity: number; price: number }>;
+  subtotal: number;
+  tax: number;
+  taxRate: number;
   total: number;
   shippingAddress: Record<string, string>;
   paymentMethod: string;
 }): { subject: string; html: string } {
-  const { firstName, orderId, items, total, shippingAddress, paymentMethod } = opts;
+  const { firstName, orderId, items, subtotal, tax, taxRate, total, shippingAddress, paymentMethod } = opts;
   const shortId = orderId.slice(0, 8).toUpperCase();
 
   const itemRows = items.map(i => `
@@ -119,9 +122,17 @@ export function orderConfirmationEmail(opts: {
         <tbody>${itemRows}</tbody>
         <tfoot>
           <tr>
-            <td colspan="2" style="padding:16px 0 4px;font-size:13px;color:#888;">Shipping</td>
-            <td style="padding:16px 0 4px;text-align:right;font-size:13px;color:#16a34a;font-weight:700;">Free</td>
+            <td colspan="2" style="padding:16px 0 4px;font-size:13px;color:#888;">Subtotal</td>
+            <td style="padding:16px 0 4px;text-align:right;font-size:13px;color:#333;font-weight:700;">₹${Number(subtotal).toFixed(2)}</td>
           </tr>
+          <tr>
+            <td colspan="2" style="padding:4px 0;font-size:13px;color:#888;">Shipping</td>
+            <td style="padding:4px 0;text-align:right;font-size:13px;color:#16a34a;font-weight:700;">Free</td>
+          </tr>
+          ${tax > 0 ? `<tr>
+            <td colspan="2" style="padding:4px 0;font-size:13px;color:#888;">GST (${Number(taxRate).toFixed(0)}%)</td>
+            <td style="padding:4px 0;text-align:right;font-size:13px;color:#333;font-weight:700;">₹${Number(tax).toFixed(2)}</td>
+          </tr>` : ''}
           <tr>
             <td colspan="2" style="padding:8px 0;font-size:16px;font-weight:900;color:${BRAND_COLOR};">Total</td>
             <td style="padding:8px 0;text-align:right;font-size:20px;font-weight:900;color:${ACCENT_COLOR};">₹${Number(total).toFixed(2)}</td>

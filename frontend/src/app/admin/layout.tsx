@@ -4,7 +4,7 @@ import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 import {
   LayoutDashboard, Users, ShoppingBag, ListOrdered, Tag,
-  Bell, LogOut, Menu, ExternalLink, ChevronRight,
+  Bell, LogOut, Menu, ExternalLink, ChevronRight, Settings,
 } from 'lucide-react';
 import { useState, useEffect } from 'react';
 import { useAuthStore } from '@/store/authStore';
@@ -31,6 +31,12 @@ const NAV_SECTIONS = [
       { href: '/admin/categories', label: 'Categories', icon: Tag },
       { href: '/admin/orders',     label: 'Orders',     icon: ListOrdered },
       { href: '/admin/users',      label: 'Users',      icon: Users },
+    ],
+  },
+  {
+    label: 'Configuration',
+    items: [
+      { href: '/admin/settings', label: 'Settings', icon: Settings },
     ],
   },
 ];

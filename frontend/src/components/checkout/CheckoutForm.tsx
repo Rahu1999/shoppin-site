@@ -6,6 +6,8 @@ import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
 import { apiPost } from '@/services/apiClient';
 import { formatPrice } from '@/utils/price';
+import { useTaxConfig } from '@/hooks/useTaxConfig';
+import { calculateGST } from '@/utils/tax';
 import { useMutation, useQuery } from '@tanstack/react-query';
 import { useRouter } from 'next/navigation';
 import { CheckCircle2, MapPin, Navigation, Plus, Banknote, CreditCard, ChevronDown, ChevronUp } from 'lucide-react';
@@ -32,8 +34,19 @@ export function CheckoutForm() {
   const { user, isAuthenticated } = useAuthStore();
   const router = useRouter();
 
+  const { data: taxConfig } = useTaxConfig();
+  const gstRate = taxConfig?.rate ?? 12;
+
   const [confirmed, setConfirmed] = useState(false);
-  const [confirmedData, setConfirmedData] = useState<{ orderId: string; total: number; method: string } | null>(null);
+  const [confirmedData, setConfirmedData] = useState<{
+    orderId: string;
+    subtotal: number;
+    tax: number;
+    taxRate: number;
+    discount: number;
+    total: number;
+    method: string;
+  } | null>(null);
   const [selectedAddressId, setSelectedAddressId] = useState<string | null>(null);
   const [showNewForm, setShowNewForm] = useState(false);
   const [saveToAccount, setSaveToAccount] = useState(true);
@@ -123,9 +136,12 @@ export function CheckoutForm() {
       return res;
     },
     onSuccess: (res: any) => {
-      // Capture total from server before clearing cart
       setConfirmedData({
         orderId: res.id,
+        subtotal: Number(res.subtotal ?? total),
+        tax: Number(res.tax ?? 0),
+        taxRate: Number(res.taxRate ?? gstRate),
+        discount: Number(res.discount ?? 0),
         total: Number(res.total ?? res.totalAmount ?? total),
         method: paymentMethod,
       });
@@ -168,12 +184,24 @@ export function CheckoutForm() {
         <div className="px-8 py-6 space-y-3 border-b border-slate-100">
           <div className="flex justify-between items-center text-sm">
             <span className="text-slate-500 font-medium">Subtotal</span>
-            <span className="font-bold text-slate-900">{formatPrice(confirmedData.total)}</span>
+            <span className="font-bold text-slate-900">{formatPrice(confirmedData.subtotal)}</span>
           </div>
           <div className="flex justify-between items-center text-sm">
             <span className="text-slate-500 font-medium">Shipping</span>
             <span className="font-bold text-green-600">Free</span>
           </div>
+          {confirmedData.discount > 0 && (
+            <div className="flex justify-between items-center text-sm">
+              <span className="text-slate-500 font-medium">Discount</span>
+              <span className="font-bold text-emerald-600">−{formatPrice(confirmedData.discount)}</span>
+            </div>
+          )}
+          {confirmedData.tax > 0 && (
+            <div className="flex justify-between items-center text-sm">
+              <span className="text-slate-500 font-medium">GST ({confirmedData.taxRate}%)</span>
+              <span className="font-bold text-slate-900">{formatPrice(confirmedData.tax)}</span>
+            </div>
+          )}
           <div className="flex justify-between items-center pt-3 border-t border-slate-100">
             <span className="font-bold text-slate-900">Total Paid</span>
             <span className="text-2xl font-black text-primary tracking-tight">{formatPrice(confirmedData.total)}</span>
@@ -474,7 +502,7 @@ export function CheckoutForm() {
       >
         {placeOrder.isPending
           ? 'Placing your order...'
-          : `Place Order · ${formatPrice(total)}`}
+          : `Place Order · ${formatPrice(total + calculateGST(total, gstRate))}`}
       </Button>
 
       {!canPlaceOrder && showNewForm && (

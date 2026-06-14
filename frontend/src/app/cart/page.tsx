@@ -8,12 +8,17 @@ import Link from 'next/link';
 import Image from 'next/image';
 
 import { formatPrice } from '@/utils/price';
+import { useTaxConfig } from '@/hooks/useTaxConfig';
+import { calculateGST } from '@/utils/tax';
 
 export default function CartPage() {
   useFetchCart();
   const { items, total } = useCartStore();
   const updateQuantity = useUpdateCartItem();
   const removeItem = useRemoveCartItem();
+  const { data: taxConfig } = useTaxConfig();
+  const gstRate = taxConfig?.rate ?? 12;
+  const estimatedTax = calculateGST(total, gstRate);
 
 
   if (items.length === 0) {
@@ -146,8 +151,8 @@ export default function CartPage() {
                   <dd className="font-bold text-green-600">Free</dd>
                 </div>
                 <div className="flex justify-between items-center text-slate-600">
-                  <dt className="font-medium">Estimated Tax</dt>
-                  <dd className="font-semibold text-slate-900">Calculated at checkout</dd>
+                  <dt className="font-medium">{taxConfig?.name ?? 'GST'} ({gstRate}%)</dt>
+                  <dd className="font-bold text-slate-900">{formatPrice(estimatedTax)}</dd>
                 </div>
                 
                 {/* Promo Code section */}
@@ -164,7 +169,8 @@ export default function CartPage() {
                 <div className="border-t border-slate-100 pt-5 mt-5 flex justify-between items-end">
                   <dt className="text-base font-bold text-slate-900">Estimated Total</dt>
                   <div className="text-right">
-                    <dd className="text-3xl font-black text-primary tracking-tight">{formatPrice(total)}</dd>
+                    <dd className="text-3xl font-black text-primary tracking-tight">{formatPrice(total + estimatedTax)}</dd>
+                    <p className="text-xs text-slate-400 mt-1">Incl. {taxConfig?.name ?? 'GST'}</p>
                   </div>
                 </div>
               </dl>

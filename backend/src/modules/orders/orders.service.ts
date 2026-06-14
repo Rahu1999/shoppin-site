@@ -12,6 +12,7 @@ import { getPaginationParams, buildPaginationMeta } from '@utils/pagination';
 import { OrderStatus } from '@entities/order-status.enum';
 import { sendMail } from '@utils/emailService';
 import { orderConfirmationEmail, orderStatusEmail } from '@utils/emailTemplates';
+import { TaxConfig } from '@entities/tax-config.entity';
 
 export class OrdersService {
   private orderRepo = AppDataSource.getRepository(Order);
@@ -21,6 +22,7 @@ export class OrdersService {
   private couponRepo = AppDataSource.getRepository(Coupon);
   private inventoryRepo = AppDataSource.getRepository(Inventory);
   private userRepo = AppDataSource.getRepository(User);
+  private taxConfigRepo = AppDataSource.getRepository(TaxConfig);
 
   public async checkout(userId: string, data: Record<string, any>) {
     const cart = await this.cartRepo.findOne({
@@ -78,7 +80,10 @@ export class OrdersService {
     }
 
     const shippingFee = 0;
-    const tax = 0;
+    const taxConfig = await this.taxConfigRepo.findOneBy({ isActive: true });
+    const taxRate = taxConfig ? Number(taxConfig.rate) : 0;
+    const taxableAmount = subtotal - discount;
+    const tax = Math.round(taxableAmount * (taxRate / 100) * 100) / 100;
     const total = subtotal - discount + shippingFee + tax;
 
     const queryRunner = AppDataSource.createQueryRunner();
@@ -109,6 +114,7 @@ export class OrdersService {
         discount,
         shippingFee,
         tax,
+        taxRate,
         total,
         couponId: coupon?.id,
         shippingAddress,
@@ -171,6 +177,9 @@ export class OrdersService {
             quantity: i.quantity,
             price: Number(i.price),
           })),
+          subtotal: Number(completedOrder.subtotal),
+          tax: Number(completedOrder.tax),
+          taxRate: Number(completedOrder.taxRate),
           total: Number(completedOrder.total),
           shippingAddress: shippingAddress as Record<string, string>,
           paymentMethod: data.paymentMethod || 'COD',

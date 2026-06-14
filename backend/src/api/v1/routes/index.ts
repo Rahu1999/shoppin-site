@@ -12,6 +12,7 @@ import paymentRoutes from '@modules/payments/payments.routes';
 import wishlistRoutes from '@modules/wishlists/wishlists.routes';
 import couponRoutes from '@modules/coupons/coupons.routes';
 import shippingRoutes from '@modules/shipping/shipping.routes';
+import taxRoutes from '@modules/tax/tax.routes';
 
 const router = Router();
 
@@ -28,6 +29,7 @@ router.use('/reviews', reviewRoutes);
 router.use('/wishlists', wishlistRoutes);
 router.use('/coupons', couponRoutes);
 router.use('/shipping', shippingRoutes);
+router.use('/tax', taxRoutes);
 
 router.get('/health', (req, res) => {
   res.status(200).json({ success: true, message: 'API is running', timestamp: new Date() });
