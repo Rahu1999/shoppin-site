@@ -1,8 +1,10 @@
 'use client';
 
-import { useParams } from 'next/navigation';
+import { useParams, useRouter } from 'next/navigation';
+import { useEffect } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { apiGet } from '@/services/apiClient';
+import { useAuthStore } from '@/store/authStore';
 import { Package, MapPin, CreditCard, ChevronLeft, CheckCircle2, AlertCircle, Clock, Truck, Loader2, Phone } from 'lucide-react';
 import Link from 'next/link';
 import Image from 'next/image';
@@ -86,13 +88,21 @@ function getStatusBadge(status: string) {
 export default function OrderDetailPage() {
   const params = useParams();
   const orderId = params.id as string;
+  const router = useRouter();
+  const isAuthenticated = useAuthStore((state) => state.isAuthenticated);
 
-  const { data: order, isLoading } = useQuery({
+  const { data: order, isLoading, isError } = useQuery({
     queryKey: ['order', orderId],
     queryFn: () => apiGet<any>(`/orders/${orderId}`),
   });
 
-  if (isLoading) {
+  useEffect(() => {
+    if (isError && !isAuthenticated) {
+      router.replace(`/login?redirect=/orders/${orderId}`);
+    }
+  }, [isError, isAuthenticated, router, orderId]);
+
+  if (isLoading || (isError && !isAuthenticated)) {
     return (
       <div className="container mx-auto px-4 py-24 flex justify-center min-h-[60vh]">
         <div className="flex flex-col items-center gap-4">
