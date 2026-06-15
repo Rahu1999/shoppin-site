@@ -5,6 +5,7 @@ import { OrderStatusHistory } from '@entities/order-status-history.entity';
 import { Cart } from '@entities/cart.entity';
 import { Address } from '@entities/address.entity';
 import { Coupon } from '@entities/coupon.entity';
+import { CouponUsage } from '@entities/coupon-usage.entity';
 import { Inventory } from '@entities/inventory.entity';
 import { User } from '@entities/user.entity';
 import { AppError } from '@utils/AppError';
@@ -21,6 +22,7 @@ export class OrdersService {
   private cartRepo = AppDataSource.getRepository(Cart);
   private addressRepo = AppDataSource.getRepository(Address);
   private couponRepo = AppDataSource.getRepository(Coupon);
+  private couponUsageRepo = AppDataSource.getRepository(CouponUsage);
   private inventoryRepo = AppDataSource.getRepository(Inventory);
   private userRepo = AppDataSource.getRepository(User);
   private taxConfigRepo = AppDataSource.getRepository(TaxConfig);
@@ -67,11 +69,21 @@ export class OrdersService {
       }
 
       if (coupon.minOrderValue && subtotal < Number(coupon.minOrderValue)) {
-        throw AppError.badRequest(`Minimum order value is ${coupon.minOrderValue}`);
+        throw AppError.badRequest(`Minimum order value is ₹${Number(coupon.minOrderValue).toLocaleString('en-IN')}`);
+      }
+
+      // Per-user limit check
+      if (coupon.perUserLimit) {
+        const userUsageCount = await this.couponUsageRepo.count({
+          where: { couponId: coupon.id, userId },
+        });
+        if (userUsageCount >= coupon.perUserLimit) {
+          throw AppError.badRequest('You have already used this coupon the maximum number of times');
+        }
       }
 
       if (coupon.type === 'fixed') {
-        discount = Number(coupon.value);
+        discount = Math.min(Number(coupon.value), subtotal);
       } else {
         discount = subtotal * (Number(coupon.value) / 100);
       }
@@ -79,6 +91,7 @@ export class OrdersService {
       if (coupon.maxDiscount && discount > Number(coupon.maxDiscount)) {
         discount = Number(coupon.maxDiscount);
       }
+      discount = Math.round(discount * 100) / 100;
     }
 
     const taxableAmount = subtotal - discount;
@@ -172,6 +185,14 @@ export class OrdersService {
       if (coupon) {
         coupon.usesCount += 1;
         await queryRunner.manager.save(coupon);
+
+        const usageRecord = queryRunner.manager.create(CouponUsage, {
+          couponId: coupon.id,
+          userId,
+          orderId: order.id,
+          discountApplied: discount,
+        });
+        await queryRunner.manager.save(usageRecord);
       }
 
       // 6. Clear Cart

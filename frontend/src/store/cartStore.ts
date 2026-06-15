@@ -17,12 +17,22 @@ export interface CartItemType {
   };
 }
 
+export interface AppliedCoupon {
+  code: string;
+  discount: number;
+  type: string;
+  name: string;
+}
+
 interface CartState {
   items: CartItemType[];
   cartId: string | null;
   itemCount: number;
   total: number;
+  appliedCoupon: AppliedCoupon | null;
   setCart: (id: string, items: CartItemType[]) => void;
+  setCoupon: (coupon: AppliedCoupon) => void;
+  clearCoupon: () => void;
   clear: () => void;
 }
 
@@ -31,6 +41,7 @@ export const useCartStore = create<CartState>((set) => ({
   cartId: null,
   itemCount: 0,
   total: 0,
+  appliedCoupon: null,
 
   setCart: (id, items) => {
     const count = items.reduce((acc, item) => acc + item.quantity, 0);
@@ -38,5 +49,9 @@ export const useCartStore = create<CartState>((set) => ({
     set({ cartId: id, items, itemCount: count, total });
   },
 
-  clear: () => set({ items: [], cartId: null, itemCount: 0, total: 0 }),
+  setCoupon: (coupon) => set({ appliedCoupon: coupon }),
+
+  clearCoupon: () => set({ appliedCoupon: null }),
+
+  clear: () => set({ items: [], cartId: null, itemCount: 0, total: 0, appliedCoupon: null }),
 }));

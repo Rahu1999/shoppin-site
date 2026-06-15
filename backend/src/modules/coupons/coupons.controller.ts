@@ -44,7 +44,8 @@ export class CouponsController {
   public validate = async (req: Request, res: Response, next: NextFunction) => {
     try {
       const { code, orderValue } = req.body;
-      const result = await this.couponsService.validateCoupon(code, Number(orderValue));
+      const userId = (req as any).user?.id;
+      const result = await this.couponsService.validateCoupon(code, Number(orderValue), userId);
       return successResponse(res, result);
     } catch (error) {
       next(error);

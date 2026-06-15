@@ -3,9 +3,13 @@
 import { useFetchCart, useRemoveCartItem, useUpdateCartItem } from '@/hooks/useCart';
 import { useCartStore } from '@/store/cartStore';
 import { Button } from '@/components/ui/Button';
-import { Minus, Plus, Trash2, ArrowRight, ShieldCheck, Tag, ShoppingBag } from 'lucide-react';
+import { Minus, Plus, Trash2, ArrowRight, ShieldCheck, Tag, ShoppingBag, X, CheckCircle2, Loader2 } from 'lucide-react';
 import Link from 'next/link';
 import Image from 'next/image';
+import { useState } from 'react';
+import { useMutation } from '@tanstack/react-query';
+import { apiPost } from '@/services/apiClient';
+import { toast } from 'sonner';
 
 import { formatPrice } from '@/utils/price';
 import { useTaxConfig } from '@/hooks/useTaxConfig';
@@ -15,14 +19,35 @@ import { calculateShipping } from '@/utils/shipping';
 
 export default function CartPage() {
   useFetchCart();
-  const { items, total } = useCartStore();
+  const { items, total, appliedCoupon, setCoupon, clearCoupon } = useCartStore();
   const updateQuantity = useUpdateCartItem();
   const removeItem = useRemoveCartItem();
   const { data: taxConfig } = useTaxConfig();
   const gstRate = taxConfig?.rate ?? 12;
   const { data: shippingConfig } = useShippingConfig();
-  const estimatedShipping = shippingConfig ? calculateShipping(total, shippingConfig) : 99;
-  const estimatedTax = calculateGST(total, gstRate);
+  const [promoInput, setPromoInput] = useState('');
+
+  const couponDiscount = appliedCoupon?.discount ?? 0;
+  const postDiscountTotal = Math.max(0, total - couponDiscount);
+  const estimatedShipping = shippingConfig ? calculateShipping(postDiscountTotal, shippingConfig) : 99;
+  const estimatedTax = calculateGST(postDiscountTotal, gstRate);
+
+  const validateCoupon = useMutation({
+    mutationFn: () => apiPost<any>('/coupons/validate', { code: promoInput.trim().toUpperCase(), orderValue: total }),
+    onSuccess: (data) => {
+      setCoupon({
+        code: data.coupon.code,
+        discount: data.discount,
+        type: data.coupon.type,
+        name: data.coupon.code,
+      });
+      setPromoInput('');
+      toast.success(`Coupon applied! You save ${formatPrice(data.discount)}`);
+    },
+    onError: (err: any) => {
+      toast.error(err?.response?.data?.message || 'Invalid coupon code');
+    },
+  });
 
 
   if (items.length === 0) {
@@ -158,29 +183,67 @@ export default function CartPage() {
                 </div>
                 {estimatedShipping > 0 && shippingConfig?.freeAbove != null && (
                   <div className="text-xs text-green-600 font-medium -mt-3">
-                    Add {formatPrice(shippingConfig.freeAbove - total)} more for free shipping
+                    Add {formatPrice(shippingConfig.freeAbove - postDiscountTotal)} more for free shipping
                   </div>
                 )}
                 <div className="flex justify-between items-center text-slate-600">
                   <dt className="font-medium">{taxConfig?.name ?? 'GST'} ({gstRate}%)</dt>
                   <dd className="font-bold text-slate-900">{formatPrice(estimatedTax)}</dd>
                 </div>
-                
+
                 {/* Promo Code section */}
                 <div className="pt-5 border-t border-slate-100">
                   <p className="text-xs font-bold uppercase tracking-widest text-slate-400 mb-3 flex items-center gap-2">
                     <Tag className="h-3.5 w-3.5" /> Promo Code
                   </p>
-                  <div className="flex gap-2">
-                     <input type="text" placeholder="Enter code" className="flex-1 bg-slate-50 border border-slate-200 rounded-xl px-4 text-sm font-medium focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all" />
-                     <Button variant="outline" className="rounded-xl font-bold bg-white h-11 border-slate-200 hover:border-primary hover:text-primary">Apply</Button>
-                  </div>
+
+                  {appliedCoupon ? (
+                    <div className="flex items-center justify-between bg-green-50 border border-green-200 rounded-xl px-4 py-3">
+                      <div className="flex items-center gap-2">
+                        <CheckCircle2 className="h-4 w-4 text-green-600 shrink-0" />
+                        <div>
+                          <p className="text-sm font-bold text-green-800">{appliedCoupon.code}</p>
+                          <p className="text-xs text-green-600">-{formatPrice(appliedCoupon.discount)} saved</p>
+                        </div>
+                      </div>
+                      <button onClick={clearCoupon} className="text-green-500 hover:text-red-500 transition-colors p-1">
+                        <X className="h-4 w-4" />
+                      </button>
+                    </div>
+                  ) : (
+                    <div className="flex gap-2">
+                      <input
+                        type="text"
+                        placeholder="Enter code"
+                        value={promoInput}
+                        onChange={e => setPromoInput(e.target.value)}
+                        onKeyDown={e => e.key === 'Enter' && promoInput.trim() && validateCoupon.mutate()}
+                        className="flex-1 bg-slate-50 border border-slate-200 rounded-xl px-4 text-sm font-medium focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all h-11"
+                      />
+                      <Button
+                        variant="outline"
+                        className="rounded-xl font-bold bg-white h-11 border-slate-200 hover:border-primary hover:text-primary shrink-0"
+                        disabled={!promoInput.trim() || validateCoupon.isPending}
+                        onClick={() => validateCoupon.mutate()}
+                      >
+                        {validateCoupon.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : 'Apply'}
+                      </Button>
+                    </div>
+                  )}
                 </div>
+
+                {/* Coupon discount line */}
+                {appliedCoupon && (
+                  <div className="flex justify-between items-center text-green-700">
+                    <dt className="font-medium text-sm">Discount ({appliedCoupon.code})</dt>
+                    <dd className="font-bold">-{formatPrice(appliedCoupon.discount)}</dd>
+                  </div>
+                )}
 
                 <div className="border-t border-slate-100 pt-5 mt-5 flex justify-between items-end">
                   <dt className="text-base font-bold text-slate-900">Estimated Total</dt>
                   <div className="text-right">
-                    <dd className="text-3xl font-black text-primary tracking-tight">{formatPrice(total + estimatedShipping + estimatedTax)}</dd>
+                    <dd className="text-3xl font-black text-primary tracking-tight">{formatPrice(postDiscountTotal + estimatedShipping + estimatedTax)}</dd>
                     <p className="text-xs text-slate-400 mt-1">Incl. {taxConfig?.name ?? 'GST'} + Shipping</p>
                   </div>
                 </div>

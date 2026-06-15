@@ -32,14 +32,16 @@ const FIELD = 'h-12 bg-white rounded-xl border-slate-200 text-sm';
 const SELECT = 'w-full h-12 px-3 rounded-xl border border-slate-200 bg-white text-sm text-slate-800 focus:outline-none focus:ring-2 focus:ring-primary/30 transition-all';
 
 export function CheckoutForm() {
-  const { items, total, clear } = useCartStore();
+  const { items, total, appliedCoupon, clearCoupon, clear } = useCartStore();
   const { user, isAuthenticated } = useAuthStore();
   const router = useRouter();
 
   const { data: taxConfig } = useTaxConfig();
   const gstRate = taxConfig?.rate ?? 12;
   const { data: shippingConfig } = useShippingConfig();
-  const shippingFeeEstimate = shippingConfig ? calculateShipping(total, shippingConfig) : 99;
+  const couponDiscount = appliedCoupon?.discount ?? 0;
+  const postDiscountTotal = Math.max(0, total - couponDiscount);
+  const shippingFeeEstimate = shippingConfig ? calculateShipping(postDiscountTotal, shippingConfig) : 99;
 
   const [confirmed, setConfirmed] = useState(false);
   const [confirmedData, setConfirmedData] = useState<{
@@ -114,6 +116,7 @@ export function CheckoutForm() {
 
       const payload: any = {
         items: items.map(i => ({ productId: i.productId, quantity: i.quantity, price: i.price })),
+        ...(appliedCoupon ? { couponCode: appliedCoupon.code } : {}),
       };
 
       if (!showNewForm && selectedAddressId) {
@@ -153,6 +156,7 @@ export function CheckoutForm() {
         total: Number(res.total ?? res.totalAmount ?? total),
         method: paymentMethod,
       });
+      clearCoupon();
       clear();
       setConfirmed(true);
     },
@@ -512,7 +516,7 @@ export function CheckoutForm() {
       >
         {placeOrder.isPending
           ? 'Placing your order...'
-          : `Place Order · ${formatPrice(total + shippingFeeEstimate + calculateGST(total, gstRate))}`}
+          : `Place Order · ${formatPrice(postDiscountTotal + shippingFeeEstimate + calculateGST(postDiscountTotal, gstRate))}`}
       </Button>
 
       {!canPlaceOrder && showNewForm && (

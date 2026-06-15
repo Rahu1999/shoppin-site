@@ -7,22 +7,25 @@ import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { formatPrice } from '@/utils/price';
 import Image from 'next/image';
-import { ShieldCheck, Lock } from 'lucide-react';
+import { ShieldCheck, Lock, Tag } from 'lucide-react';
 import { useTaxConfig } from '@/hooks/useTaxConfig';
 import { calculateGST } from '@/utils/tax';
 import { useShippingConfig } from '@/hooks/useShippingConfig';
 import { calculateShipping } from '@/utils/shipping';
 
 export default function CheckoutPage() {
-  const { items, total } = useCartStore();
+  const { items, total, appliedCoupon } = useCartStore();
   const { isAuthenticated } = useAuthStore();
   const router = useRouter();
   const [mounted, setMounted] = useState(false);
   const { data: taxConfig } = useTaxConfig();
   const gstRate = taxConfig?.rate ?? 12;
   const { data: shippingConfig } = useShippingConfig();
-  const shippingFee = shippingConfig ? calculateShipping(total, shippingConfig) : 99;
-  const estimatedTax = calculateGST(total, gstRate);
+
+  const couponDiscount = appliedCoupon?.discount ?? 0;
+  const postDiscountTotal = Math.max(0, total - couponDiscount);
+  const shippingFee = shippingConfig ? calculateShipping(postDiscountTotal, shippingConfig) : 99;
+  const estimatedTax = calculateGST(postDiscountTotal, gstRate);
 
   useEffect(() => { setMounted(true); }, []);
 
@@ -34,7 +37,6 @@ export default function CheckoutPage() {
 
   if (!mounted || !isAuthenticated) return null;
 
-
   return (
     <div className="bg-surface min-h-[85vh] pt-12 pb-24">
       <div className="container mx-auto px-4 max-w-6xl">
@@ -42,7 +44,7 @@ export default function CheckoutPage() {
         <p className="text-slate-500 mb-10 text-center md:text-left flex items-center justify-center md:justify-start gap-1.5 font-medium">
           <Lock className="h-4 w-4" /> 256-bit SSL encrypted checkout
         </p>
-        
+
         <div className={`lg:grid lg:gap-10 xl:gap-14 lg:items-start ${items.length > 0 ? 'lg:grid-cols-12' : ''}`}>
           <div className={items.length > 0 ? 'lg:col-span-7 space-y-6' : 'max-w-xl mx-auto w-full'}>
             <CheckoutForm />
@@ -55,7 +57,7 @@ export default function CheckoutPage() {
                  <h3 className="font-black text-xl text-slate-900">Order Summary</h3>
                  <span className="bg-primary/10 text-primary text-xs font-bold px-2.5 py-1 rounded-full">{items.length} Items</span>
               </div>
-              
+
               <ul className="divide-y divide-slate-100 max-h-[400px] overflow-y-auto px-6 sm:px-8 border-b border-slate-100 custom-scrollbar">
                 {items.map(item => (
                   <li key={item.id} className="py-5 flex items-start gap-4">
@@ -79,25 +81,37 @@ export default function CheckoutPage() {
                 ))}
               </ul>
 
-               <div className="p-6 sm:p-8 bg-white">
-                  <div className="flex justify-between items-center mb-3 text-sm">
+               <div className="p-6 sm:p-8 bg-white space-y-3 text-sm">
+                  <div className="flex justify-between items-center">
                     <span className="text-slate-500 font-medium">Subtotal</span>
                     <span className="font-bold text-slate-900">{formatPrice(total)}</span>
                   </div>
-                   <div className="flex justify-between items-center mb-3 text-sm">
+
+                  {appliedCoupon && (
+                    <div className="flex justify-between items-center text-green-700">
+                      <span className="font-medium flex items-center gap-1.5">
+                        <Tag className="h-3.5 w-3.5" /> {appliedCoupon.code}
+                      </span>
+                      <span className="font-bold">-{formatPrice(appliedCoupon.discount)}</span>
+                    </div>
+                  )}
+
+                  <div className="flex justify-between items-center">
                     <span className="text-slate-500 font-medium">{shippingConfig?.name ?? 'Shipping'}</span>
                     <span className={`font-bold ${shippingFee === 0 ? 'text-green-600' : 'text-slate-900'}`}>
                       {shippingFee === 0 ? 'Free' : formatPrice(shippingFee)}
                     </span>
                   </div>
-                  <div className="flex justify-between items-center mb-5 text-sm">
+
+                  <div className="flex justify-between items-center">
                     <span className="text-slate-500 font-medium">{taxConfig?.name ?? 'GST'} ({gstRate}%)</span>
                     <span className="font-bold text-slate-900">{formatPrice(estimatedTax)}</span>
                   </div>
-                  <div className="flex justify-between items-end pt-5 border-t border-slate-100">
+
+                  <div className="flex justify-between items-end pt-4 border-t border-slate-100">
                     <span className="text-base font-bold text-slate-900">Total</span>
                     <div className="text-right">
-                      <span className="text-3xl font-black text-primary tracking-tight">{formatPrice(total + shippingFee + estimatedTax)}</span>
+                      <span className="text-3xl font-black text-primary tracking-tight">{formatPrice(postDiscountTotal + shippingFee + estimatedTax)}</span>
                     </div>
                   </div>
                </div>
