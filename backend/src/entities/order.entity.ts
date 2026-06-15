@@ -26,6 +26,9 @@ export class Order extends BaseEntity {
   @Column({ name: 'shipping_fee', type: 'decimal', precision: 12, scale: 2, default: 0 })
   shippingFee!: number;
 
+  @Column({ name: 'shipping_method_name', length: 100, nullable: true })
+  shippingMethodName?: string;
+
   @Column({ type: 'decimal', precision: 12, scale: 2, default: 0 })
   tax!: number;
 

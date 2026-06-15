@@ -74,13 +74,15 @@ export function orderConfirmationEmail(opts: {
   orderId: string;
   items: Array<{ name: string; quantity: number; price: number }>;
   subtotal: number;
+  shippingFee: number;
+  shippingMethodName?: string;
   tax: number;
   taxRate: number;
   total: number;
   shippingAddress: Record<string, string>;
   paymentMethod: string;
 }): { subject: string; html: string } {
-  const { firstName, orderId, items, subtotal, tax, taxRate, total, shippingAddress, paymentMethod } = opts;
+  const { firstName, orderId, items, subtotal, shippingFee, shippingMethodName, tax, taxRate, total, shippingAddress, paymentMethod } = opts;
   const shortId = orderId.slice(0, 8).toUpperCase();
 
   const itemRows = items.map(i => `
@@ -126,8 +128,8 @@ export function orderConfirmationEmail(opts: {
             <td style="padding:16px 0 4px;text-align:right;font-size:13px;color:#333;font-weight:700;">₹${Number(subtotal).toFixed(2)}</td>
           </tr>
           <tr>
-            <td colspan="2" style="padding:4px 0;font-size:13px;color:#888;">Shipping</td>
-            <td style="padding:4px 0;text-align:right;font-size:13px;color:#16a34a;font-weight:700;">Free</td>
+            <td colspan="2" style="padding:4px 0;font-size:13px;color:#888;">${shippingMethodName || 'Shipping'}</td>
+            <td style="padding:4px 0;text-align:right;font-size:13px;color:${shippingFee > 0 ? '#333' : '#16a34a'};font-weight:700;">${shippingFee > 0 ? `₹${Number(shippingFee).toFixed(2)}` : 'Free'}</td>
           </tr>
           ${tax > 0 ? `<tr>
             <td colspan="2" style="padding:4px 0;font-size:13px;color:#888;">GST (${Number(taxRate).toFixed(0)}%)</td>

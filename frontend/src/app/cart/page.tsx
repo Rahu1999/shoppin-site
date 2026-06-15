@@ -10,6 +10,8 @@ import Image from 'next/image';
 import { formatPrice } from '@/utils/price';
 import { useTaxConfig } from '@/hooks/useTaxConfig';
 import { calculateGST } from '@/utils/tax';
+import { useShippingConfig } from '@/hooks/useShippingConfig';
+import { calculateShipping } from '@/utils/shipping';
 
 export default function CartPage() {
   useFetchCart();
@@ -18,6 +20,8 @@ export default function CartPage() {
   const removeItem = useRemoveCartItem();
   const { data: taxConfig } = useTaxConfig();
   const gstRate = taxConfig?.rate ?? 12;
+  const { data: shippingConfig } = useShippingConfig();
+  const estimatedShipping = shippingConfig ? calculateShipping(total, shippingConfig) : 99;
   const estimatedTax = calculateGST(total, gstRate);
 
 
@@ -148,8 +152,15 @@ export default function CartPage() {
                 </div>
                 <div className="flex justify-between items-center text-slate-600">
                   <dt className="font-medium">Estimated Shipping</dt>
-                  <dd className="font-bold text-green-600">Free</dd>
+                  <dd className={`font-bold ${estimatedShipping === 0 ? 'text-green-600' : 'text-slate-900'}`}>
+                    {estimatedShipping === 0 ? 'Free' : formatPrice(estimatedShipping)}
+                  </dd>
                 </div>
+                {estimatedShipping > 0 && shippingConfig?.freeAbove != null && (
+                  <div className="text-xs text-green-600 font-medium -mt-3">
+                    Add {formatPrice(shippingConfig.freeAbove - total)} more for free shipping
+                  </div>
+                )}
                 <div className="flex justify-between items-center text-slate-600">
                   <dt className="font-medium">{taxConfig?.name ?? 'GST'} ({gstRate}%)</dt>
                   <dd className="font-bold text-slate-900">{formatPrice(estimatedTax)}</dd>
@@ -169,8 +180,8 @@ export default function CartPage() {
                 <div className="border-t border-slate-100 pt-5 mt-5 flex justify-between items-end">
                   <dt className="text-base font-bold text-slate-900">Estimated Total</dt>
                   <div className="text-right">
-                    <dd className="text-3xl font-black text-primary tracking-tight">{formatPrice(total + estimatedTax)}</dd>
-                    <p className="text-xs text-slate-400 mt-1">Incl. {taxConfig?.name ?? 'GST'}</p>
+                    <dd className="text-3xl font-black text-primary tracking-tight">{formatPrice(total + estimatedShipping + estimatedTax)}</dd>
+                    <p className="text-xs text-slate-400 mt-1">Incl. {taxConfig?.name ?? 'GST'} + Shipping</p>
                   </div>
                 </div>
               </dl>

@@ -13,6 +13,7 @@ import { OrderStatus } from '@entities/order-status.enum';
 import { sendMail } from '@utils/emailService';
 import { orderConfirmationEmail, orderStatusEmail } from '@utils/emailTemplates';
 import { TaxConfig } from '@entities/tax-config.entity';
+import { ShippingConfig } from '@entities/shipping-config.entity';
 
 export class OrdersService {
   private orderRepo = AppDataSource.getRepository(Order);
@@ -23,6 +24,7 @@ export class OrdersService {
   private inventoryRepo = AppDataSource.getRepository(Inventory);
   private userRepo = AppDataSource.getRepository(User);
   private taxConfigRepo = AppDataSource.getRepository(TaxConfig);
+  private shippingConfigRepo = AppDataSource.getRepository(ShippingConfig);
 
   public async checkout(userId: string, data: Record<string, any>) {
     const cart = await this.cartRepo.findOne({
@@ -79,12 +81,24 @@ export class OrdersService {
       }
     }
 
-    const shippingFee = 0;
+    const taxableAmount = subtotal - discount;
+
+    // Shipping — auto-applied from config
+    const shippingConfig = await this.shippingConfigRepo.findOneBy({ isActive: true });
+    const shippingFee = shippingConfig
+      ? (shippingConfig.freeAbove != null && taxableAmount >= Number(shippingConfig.freeAbove)
+          ? 0
+          : Number(shippingConfig.flatFee))
+      : 0;
+    const shippingMethodName = shippingConfig
+      ? `${shippingConfig.name}${shippingConfig.estimatedDaysMin ? ` (${shippingConfig.estimatedDaysMin}–${shippingConfig.estimatedDaysMax} days)` : ''}`
+      : undefined;
+
+    // Tax — applied on post-discount amount only (shipping not taxed)
     const taxConfig = await this.taxConfigRepo.findOneBy({ isActive: true });
     const taxRate = taxConfig ? Number(taxConfig.rate) : 0;
-    const taxableAmount = subtotal - discount;
     const tax = Math.round(taxableAmount * (taxRate / 100) * 100) / 100;
-    const total = subtotal - discount + shippingFee + tax;
+    const total = taxableAmount + shippingFee + tax;
 
     const queryRunner = AppDataSource.createQueryRunner();
     await queryRunner.connect();
@@ -113,6 +127,7 @@ export class OrdersService {
         subtotal,
         discount,
         shippingFee,
+        shippingMethodName,
         tax,
         taxRate,
         total,
@@ -178,6 +193,8 @@ export class OrdersService {
             price: Number(i.price),
           })),
           subtotal: Number(completedOrder.subtotal),
+          shippingFee: Number(completedOrder.shippingFee),
+          shippingMethodName: completedOrder.shippingMethodName,
           tax: Number(completedOrder.tax),
           taxRate: Number(completedOrder.taxRate),
           total: Number(completedOrder.total),

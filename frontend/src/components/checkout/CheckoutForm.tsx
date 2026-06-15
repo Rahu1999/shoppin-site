@@ -8,6 +8,8 @@ import { apiPost } from '@/services/apiClient';
 import { formatPrice } from '@/utils/price';
 import { useTaxConfig } from '@/hooks/useTaxConfig';
 import { calculateGST } from '@/utils/tax';
+import { useShippingConfig } from '@/hooks/useShippingConfig';
+import { calculateShipping } from '@/utils/shipping';
 import { useMutation, useQuery } from '@tanstack/react-query';
 import { useRouter } from 'next/navigation';
 import { CheckCircle2, MapPin, Navigation, Plus, Banknote, CreditCard, ChevronDown, ChevronUp } from 'lucide-react';
@@ -36,11 +38,15 @@ export function CheckoutForm() {
 
   const { data: taxConfig } = useTaxConfig();
   const gstRate = taxConfig?.rate ?? 12;
+  const { data: shippingConfig } = useShippingConfig();
+  const shippingFeeEstimate = shippingConfig ? calculateShipping(total, shippingConfig) : 99;
 
   const [confirmed, setConfirmed] = useState(false);
   const [confirmedData, setConfirmedData] = useState<{
     orderId: string;
     subtotal: number;
+    shippingFee: number;
+    shippingMethodName?: string;
     tax: number;
     taxRate: number;
     discount: number;
@@ -139,6 +145,8 @@ export function CheckoutForm() {
       setConfirmedData({
         orderId: res.id,
         subtotal: Number(res.subtotal ?? total),
+        shippingFee: Number(res.shippingFee ?? 0),
+        shippingMethodName: res.shippingMethodName,
         tax: Number(res.tax ?? 0),
         taxRate: Number(res.taxRate ?? gstRate),
         discount: Number(res.discount ?? 0),
@@ -187,8 +195,10 @@ export function CheckoutForm() {
             <span className="font-bold text-slate-900">{formatPrice(confirmedData.subtotal)}</span>
           </div>
           <div className="flex justify-between items-center text-sm">
-            <span className="text-slate-500 font-medium">Shipping</span>
-            <span className="font-bold text-green-600">Free</span>
+            <span className="text-slate-500 font-medium">{confirmedData.shippingMethodName || 'Shipping'}</span>
+            <span className={`font-bold ${confirmedData.shippingFee === 0 ? 'text-green-600' : 'text-slate-900'}`}>
+              {confirmedData.shippingFee === 0 ? 'Free' : formatPrice(confirmedData.shippingFee)}
+            </span>
           </div>
           {confirmedData.discount > 0 && (
             <div className="flex justify-between items-center text-sm">
@@ -502,7 +512,7 @@ export function CheckoutForm() {
       >
         {placeOrder.isPending
           ? 'Placing your order...'
-          : `Place Order · ${formatPrice(total + calculateGST(total, gstRate))}`}
+          : `Place Order · ${formatPrice(total + shippingFeeEstimate + calculateGST(total, gstRate))}`}
       </Button>
 
       {!canPlaceOrder && showNewForm && (

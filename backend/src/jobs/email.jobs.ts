@@ -8,7 +8,7 @@ export class EmailJobs {
     orderId: string,
     items: Array<{ name: string; quantity: number; price: number }>,
     total: number,
-    opts?: { firstName?: string; shippingAddress?: Record<string, string>; paymentMethod?: string; subtotal?: number; tax?: number; taxRate?: number },
+    opts?: { firstName?: string; shippingAddress?: Record<string, string>; paymentMethod?: string; subtotal?: number; shippingFee?: number; shippingMethodName?: string; tax?: number; taxRate?: number },
   ) {
     try {
       const subtotal = opts?.subtotal ?? total;
@@ -17,6 +17,8 @@ export class EmailJobs {
         orderId,
         items,
         subtotal,
+        shippingFee: opts?.shippingFee ?? 0,
+        shippingMethodName: opts?.shippingMethodName,
         tax: opts?.tax ?? 0,
         taxRate: opts?.taxRate ?? 0,
         total,

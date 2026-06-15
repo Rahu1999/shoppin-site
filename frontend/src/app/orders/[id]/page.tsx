@@ -219,7 +219,10 @@ export default function OrderDetailPage() {
                   : order.status === 'cancelled' ? 'Cancelled'
                   : 'Awaiting Dispatch'}
               </p>
-              <p className="text-slate-500">Free Insured Delivery</p>
+              <p className="text-slate-500">
+                {order.shippingMethodName || 'Standard Delivery'}
+                {Number(order.shippingFee) === 0 && ' · Free'}
+              </p>
               {(order.status === 'shipped' || order.status === 'delivered') && (
                 <p className="text-slate-500 mt-1">
                   Ref: <span className="font-bold text-primary">RI-{order.id.slice(0, 8).toUpperCase()}</span>
@@ -294,8 +297,10 @@ export default function OrderDetailPage() {
                 </div>
               )}
               <div className="flex justify-between text-sm text-slate-600">
-                <span className="font-medium">Shipping</span>
-                <span className="font-bold text-emerald-600">Free</span>
+                <span className="font-medium">{order.shippingMethodName || 'Shipping'}</span>
+                <span className={`font-bold ${Number(order.shippingFee) === 0 ? 'text-emerald-600' : 'text-slate-900'}`}>
+                  {Number(order.shippingFee) === 0 ? 'Free' : formatPrice(Number(order.shippingFee))}
+                </span>
               </div>
               {Number(order.tax) > 0 && (
                 <div className="flex justify-between text-sm text-slate-600">

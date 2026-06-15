@@ -3,29 +3,36 @@
 import { CheckoutForm } from '@/components/checkout/CheckoutForm';
 import { useCartStore } from '@/store/cartStore';
 import { useAuthStore } from '@/store/authStore';
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { formatPrice } from '@/utils/price';
 import Image from 'next/image';
 import { ShieldCheck, Lock } from 'lucide-react';
 import { useTaxConfig } from '@/hooks/useTaxConfig';
 import { calculateGST } from '@/utils/tax';
+import { useShippingConfig } from '@/hooks/useShippingConfig';
+import { calculateShipping } from '@/utils/shipping';
 
 export default function CheckoutPage() {
   const { items, total } = useCartStore();
   const { isAuthenticated } = useAuthStore();
   const router = useRouter();
+  const [mounted, setMounted] = useState(false);
   const { data: taxConfig } = useTaxConfig();
   const gstRate = taxConfig?.rate ?? 12;
+  const { data: shippingConfig } = useShippingConfig();
+  const shippingFee = shippingConfig ? calculateShipping(total, shippingConfig) : 99;
   const estimatedTax = calculateGST(total, gstRate);
 
+  useEffect(() => { setMounted(true); }, []);
+
   useEffect(() => {
-    if (!isAuthenticated) {
+    if (mounted && !isAuthenticated) {
       router.replace('/login?redirect=/checkout');
     }
-  }, [isAuthenticated, router]);
+  }, [mounted, isAuthenticated, router]);
 
-  if (!isAuthenticated) return null;
+  if (!mounted || !isAuthenticated) return null;
 
 
   return (
@@ -78,8 +85,10 @@ export default function CheckoutPage() {
                     <span className="font-bold text-slate-900">{formatPrice(total)}</span>
                   </div>
                    <div className="flex justify-between items-center mb-3 text-sm">
-                    <span className="text-slate-500 font-medium">Shipping</span>
-                    <span className="font-bold text-green-600">Free Full Insured</span>
+                    <span className="text-slate-500 font-medium">{shippingConfig?.name ?? 'Shipping'}</span>
+                    <span className={`font-bold ${shippingFee === 0 ? 'text-green-600' : 'text-slate-900'}`}>
+                      {shippingFee === 0 ? 'Free' : formatPrice(shippingFee)}
+                    </span>
                   </div>
                   <div className="flex justify-between items-center mb-5 text-sm">
                     <span className="text-slate-500 font-medium">{taxConfig?.name ?? 'GST'} ({gstRate}%)</span>
@@ -88,7 +97,7 @@ export default function CheckoutPage() {
                   <div className="flex justify-between items-end pt-5 border-t border-slate-100">
                     <span className="text-base font-bold text-slate-900">Total</span>
                     <div className="text-right">
-                      <span className="text-3xl font-black text-primary tracking-tight">{formatPrice(total + estimatedTax)}</span>
+                      <span className="text-3xl font-black text-primary tracking-tight">{formatPrice(total + shippingFee + estimatedTax)}</span>
                     </div>
                   </div>
                </div>

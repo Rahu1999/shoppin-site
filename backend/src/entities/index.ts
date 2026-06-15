@@ -30,3 +30,4 @@ export * from './order-status.enum';
 export * from './payment-status.enum';
 export * from './transaction-type.enum';
 export * from './tax-config.entity';
+export * from './shipping-config.entity';
