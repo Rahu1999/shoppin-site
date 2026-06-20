@@ -61,6 +61,21 @@ export function Footer() {
                   My Account
                 </Link>
               </li>
+              <li>
+                <Link href="/privacy-policy" className="text-gray-400 hover:text-white transition-colors">
+                  Privacy Policy
+                </Link>
+              </li>
+              <li>
+                <Link href="/return-refund-policy" className="text-gray-400 hover:text-white transition-colors">
+                  Return &amp; Refund Policy
+                </Link>
+              </li>
+              <li>
+                <Link href="/terms-and-conditions" className="text-gray-400 hover:text-white transition-colors">
+                  Terms &amp; Conditions
+                </Link>
+              </li>
             </ul>
           </div>
 
