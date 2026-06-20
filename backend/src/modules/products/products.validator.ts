@@ -22,6 +22,7 @@ export const getProductsQuerySchema = z.object({
   sort: z.enum(['price', 'createdAt', 'name']).optional(),
   order: z.enum(['ASC', 'DESC']).optional(),
   isFeatured: z.string().optional(),
+  adminView: z.string().optional(),
 });
 
 export const createProductSchema = z.object({
