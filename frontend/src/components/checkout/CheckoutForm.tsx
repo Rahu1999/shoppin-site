@@ -10,9 +10,13 @@ import { useTaxConfig } from '@/hooks/useTaxConfig';
 import { calculateGST } from '@/utils/tax';
 import { useShippingConfig } from '@/hooks/useShippingConfig';
 import { calculateShipping } from '@/utils/shipping';
+import { loadRazorpayScript } from '@/utils/loadRazorpay';
 import { useMutation, useQuery } from '@tanstack/react-query';
 import { useRouter } from 'next/navigation';
-import { CheckCircle2, MapPin, Navigation, Plus, Banknote, CreditCard, ChevronDown, ChevronUp } from 'lucide-react';
+import {
+  CheckCircle2, MapPin, Navigation, Plus, Banknote,
+  CreditCard, ChevronDown, ChevronUp, Loader2,
+} from 'lucide-react';
 import { useAuthStore } from '@/store/authStore';
 import { getAddresses, addAddress, Address } from '@/services/userService';
 import { toast } from 'sonner';
@@ -23,7 +27,6 @@ const INDIAN_STATES = [
   'Maharashtra','Manipur','Meghalaya','Mizoram','Nagaland','Odisha','Punjab',
   'Rajasthan','Sikkim','Tamil Nadu','Telangana','Tripura','Uttar Pradesh',
   'Uttarakhand','West Bengal',
-  // UTs
   'Delhi','Chandigarh','Jammu & Kashmir','Ladakh','Puducherry',
   'Andaman & Nicobar Islands','Dadra & Nagar Haveli and Daman & Diu','Lakshadweep',
 ];
@@ -58,7 +61,7 @@ export function CheckoutForm() {
   const [selectedAddressId, setSelectedAddressId] = useState<string | null>(null);
   const [showNewForm, setShowNewForm] = useState(false);
   const [saveToAccount, setSaveToAccount] = useState(true);
-  const [paymentMethod, setPaymentMethod] = useState<'COD' | 'ONLINE'>('COD');
+  const [paymentMethod, setPaymentMethod] = useState<'COD' | 'ONLINE'>('ONLINE');
 
   const [newAddr, setNewAddr] = useState({
     fullName: '',
@@ -74,10 +77,9 @@ export function CheckoutForm() {
   const { data: addresses = [], isSuccess, isLoading: addressesLoading } = useQuery({
     queryKey: ['addresses'],
     queryFn: getAddresses,
-    enabled: isAuthenticated,   // token is in localStorage immediately; user object may be null on refresh
+    enabled: isAuthenticated,
   });
 
-  // Pre-fill name from user account
   useEffect(() => {
     if (user) {
       setNewAddr(prev => ({
@@ -87,7 +89,6 @@ export function CheckoutForm() {
     }
   }, [user]);
 
-  // Auto-select default / first saved address
   useEffect(() => {
     if (!isSuccess) return;
     if (addresses.length > 0) {
@@ -134,16 +135,69 @@ export function CheckoutForm() {
         };
       }
 
+      // Step 1: Create the app order
       const res: any = await apiPost('/orders', payload);
+      const orderId: string = res.id;
 
-      await apiPost(`/payments/${res.id}/process`, {
-        amount: Number(res.total),
-        paymentMethod: paymentMethod === 'COD' ? 'COD' : 'CREDIT_CARD',
-        providerToken: paymentMethod === 'COD' ? 'cod' : 'mock_stripe_token_abc123',
+      // ── COD path ──────────────────────────────────────────────────────────
+      if (paymentMethod === 'COD') {
+        await apiPost(`/payments/${orderId}/process`, {
+          amount: Number(res.total),
+          paymentMethod: 'COD',
+          currency: 'INR',
+        });
+        return res;
+      }
+
+      // ── Razorpay online path ───────────────────────────────────────────────
+
+      // Load Razorpay checkout.js dynamically
+      const loaded = await loadRazorpayScript();
+      if (!loaded) {
+        throw new Error('Could not load the payment gateway. Please check your internet connection and try again.');
+      }
+
+      // Step 2: Create Razorpay order on our backend (returns key + rzp order_id)
+      const rzpOrderData: any = await apiPost('/payments/razorpay/create-order', { orderId });
+
+      // Step 3: Open Razorpay popup — wrap callback in a Promise so we can await it
+      const selectedAddr = !showNewForm && selectedAddressId
+        ? addresses.find(a => a.id === selectedAddressId)
+        : null;
+      const contactPhone = selectedAddr?.phone || newAddr.phone || '';
+
+      const rzpResponse = await new Promise<RazorpayResponse>((resolve, reject) => {
+        const options: RazorpayOptions = {
+          key: rzpOrderData.key,
+          amount: rzpOrderData.amount,       // already in paise from backend
+          currency: rzpOrderData.currency,
+          name: 'Rajesh Industries',
+          description: `Order #${orderId.slice(0, 8).toUpperCase()}`,
+          order_id: rzpOrderData.razorpayOrderId,
+          prefill: {
+            name: user ? `${user.firstName ?? ''} ${user.lastName ?? ''}`.trim() : '',
+            email: (user as any)?.email ?? '',
+            contact: contactPhone,
+          },
+          theme: { color: '#1C1C1E' },
+          handler: (response: RazorpayResponse) => resolve(response),
+          modal: {
+            ondismiss: () => reject(new Error('Payment cancelled')),
+          },
+        };
+        const rzp = new window.Razorpay(options);
+        rzp.open();
+      });
+
+      // Step 4: Verify payment signature on our backend
+      await apiPost('/payments/razorpay/verify', {
+        ...rzpResponse,
+        orderId,
       });
 
       return res;
     },
+
     onSuccess: (res: any) => {
       setConfirmedData({
         orderId: res.id,
@@ -160,8 +214,14 @@ export function CheckoutForm() {
       clear();
       setConfirmed(true);
     },
+
     onError: (err: any) => {
-      const msg = err?.response?.data?.message || 'Failed to place order. Please try again.';
+      // User cancelled the Razorpay popup — friendly message, not an error toast
+      if (err?.message === 'Payment cancelled') {
+        toast.info('Payment was cancelled. Your order has not been placed.');
+        return;
+      }
+      const msg = err?.response?.data?.message || err?.message || 'Failed to place order. Please try again.';
       toast.error(msg);
     },
   });
@@ -177,22 +237,22 @@ export function CheckoutForm() {
     );
   }
 
-  // ── Confirmation ────────────────────────────────────────────────────────────
+  // ── Order confirmed ─────────────────────────────────────────────────────────
   if (confirmed && confirmedData) {
     return (
       <div className="bg-white rounded-3xl shadow-sm border border-slate-100 overflow-hidden">
-        {/* Green header */}
         <div className="bg-green-50 border-b border-green-100 px-8 py-10 flex flex-col items-center text-center">
           <div className="h-20 w-20 bg-white rounded-full flex items-center justify-center mb-4 shadow-md ring-4 ring-green-100">
             <CheckCircle2 className="h-10 w-10 text-green-500" />
           </div>
-          <h2 className="text-2xl font-black tracking-tight text-slate-900 mb-1">Order Confirmed!</h2>
+          <h2 className="text-2xl font-black tracking-tight text-slate-900 mb-1">
+            {confirmedData.method === 'COD' ? 'Order Placed!' : 'Payment Successful!'}
+          </h2>
           <p className="text-slate-500 text-sm font-medium">
             Order <span className="font-bold text-slate-700">#{confirmedData.orderId.slice(0, 8).toUpperCase()}</span>
           </p>
         </div>
 
-        {/* Summary rows */}
         <div className="px-8 py-6 space-y-3 border-b border-slate-100">
           <div className="flex justify-between items-center text-sm">
             <span className="text-slate-500 font-medium">Subtotal</span>
@@ -217,20 +277,22 @@ export function CheckoutForm() {
             </div>
           )}
           <div className="flex justify-between items-center pt-3 border-t border-slate-100">
-            <span className="font-bold text-slate-900">Total Paid</span>
+            <span className="font-bold text-slate-900">Total {confirmedData.method === 'COD' ? 'Payable' : 'Paid'}</span>
             <span className="text-2xl font-black text-primary tracking-tight">{formatPrice(confirmedData.total)}</span>
           </div>
           <div className="flex justify-between items-center text-sm">
             <span className="text-slate-500 font-medium">Payment</span>
             <span className="font-bold text-slate-700">
-              {confirmedData.method === 'COD' ? 'Cash on Delivery' : 'Online Payment'}
+              {confirmedData.method === 'COD' ? 'Cash on Delivery' : 'Paid Online (Razorpay)'}
             </span>
           </div>
         </div>
 
         <div className="px-8 py-6">
           <p className="text-sm text-slate-500 mb-5 text-center">
-            You'll receive an email confirmation shortly. We'll notify you when your order ships.
+            {confirmedData.method === 'COD'
+              ? "We'll notify you when your order is shipped. Pay in cash on delivery."
+              : "Payment confirmed! We'll notify you when your order is shipped."}
           </p>
           <div className="flex flex-col sm:flex-row gap-3">
             <Button variant="outline" onClick={() => router.push('/orders')} className="flex-1 h-12 rounded-xl font-bold">
@@ -245,12 +307,19 @@ export function CheckoutForm() {
     );
   }
 
-  // ── Address validity check ──────────────────────────────────────────────────
   const newFormFilled = !!(
     newAddr.fullName && newAddr.phone && newAddr.line1 &&
     newAddr.city && newAddr.state && newAddr.postalCode
   );
   const canPlaceOrder = showNewForm ? newFormFilled : !!selectedAddressId;
+
+  const orderTotal = postDiscountTotal + shippingFeeEstimate + calculateGST(postDiscountTotal, gstRate);
+
+  const buttonLabel = placeOrder.isPending
+    ? (paymentMethod === 'COD' ? 'Placing your order...' : 'Opening payment...')
+    : (paymentMethod === 'COD'
+        ? `Place Order · ${formatPrice(orderTotal)}`
+        : `Pay Online · ${formatPrice(orderTotal)}`);
 
   // ── Main checkout ───────────────────────────────────────────────────────────
   return (
@@ -278,7 +347,6 @@ export function CheckoutForm() {
         </div>
 
         <div className="p-6">
-          {/* Loading skeleton while addresses fetch */}
           {addressesLoading && (
             <div className="grid grid-cols-1 md:grid-cols-2 gap-3 animate-pulse">
               {[0, 1].map(i => (
@@ -287,7 +355,6 @@ export function CheckoutForm() {
             </div>
           )}
 
-          {/* Saved address cards */}
           {!addressesLoading && !showNewForm && addresses.length > 0 && (
             <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
               {addresses.map(addr => (
@@ -335,11 +402,9 @@ export function CheckoutForm() {
             </div>
           )}
 
-          {/* New address form */}
           {!addressesLoading && showNewForm && (
             <div className="space-y-4">
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                {/* Full name */}
                 <div className="space-y-1.5">
                   <label className="text-xs font-bold text-slate-600 uppercase tracking-wide">Full Name</label>
                   <Input
@@ -350,20 +415,18 @@ export function CheckoutForm() {
                     required
                   />
                 </div>
-                {/* Phone */}
                 <div className="space-y-1.5">
                   <label className="text-xs font-bold text-slate-600 uppercase tracking-wide">Mobile Number</label>
                   <Input
                     type="tel"
                     value={newAddr.phone}
-                    onChange={e => setNewAddr(p => ({ ...p, phone: e.target.value }))}
+                    onChange={e => setNewAddr(p => ({ ...p, phone: e.target.value.replace(/\D/g, '').slice(0, 10) }))}
                     placeholder="9870212660"
                     maxLength={10}
                     className={FIELD}
                     required
                   />
                 </div>
-                {/* Address line 1 */}
                 <div className="md:col-span-2 space-y-1.5">
                   <label className="text-xs font-bold text-slate-600 uppercase tracking-wide">Flat / House No., Street, Area</label>
                   <Input
@@ -374,9 +437,10 @@ export function CheckoutForm() {
                     required
                   />
                 </div>
-                {/* Address line 2 */}
                 <div className="md:col-span-2 space-y-1.5">
-                  <label className="text-xs font-bold text-slate-600 uppercase tracking-wide">Landmark <span className="text-slate-400 normal-case font-normal">(optional)</span></label>
+                  <label className="text-xs font-bold text-slate-600 uppercase tracking-wide">
+                    Landmark <span className="text-slate-400 normal-case font-normal">(optional)</span>
+                  </label>
                   <Input
                     value={newAddr.line2}
                     onChange={e => setNewAddr(p => ({ ...p, line2: e.target.value }))}
@@ -384,7 +448,6 @@ export function CheckoutForm() {
                     className={FIELD}
                   />
                 </div>
-                {/* City */}
                 <div className="space-y-1.5">
                   <label className="text-xs font-bold text-slate-600 uppercase tracking-wide">City</label>
                   <Input
@@ -395,7 +458,6 @@ export function CheckoutForm() {
                     required
                   />
                 </div>
-                {/* Pincode */}
                 <div className="space-y-1.5">
                   <label className="text-xs font-bold text-slate-600 uppercase tracking-wide">PIN Code</label>
                   <Input
@@ -407,7 +469,6 @@ export function CheckoutForm() {
                     required
                   />
                 </div>
-                {/* State */}
                 <div className="space-y-1.5">
                   <label className="text-xs font-bold text-slate-600 uppercase tracking-wide">State</label>
                   <select
@@ -422,7 +483,6 @@ export function CheckoutForm() {
                     ))}
                   </select>
                 </div>
-                {/* Country — locked */}
                 <div className="space-y-1.5">
                   <label className="text-xs font-bold text-slate-600 uppercase tracking-wide">Country</label>
                   <div className="h-12 px-3 rounded-xl border border-slate-200 bg-slate-50 flex items-center text-sm text-slate-500 font-medium select-none">
@@ -431,7 +491,6 @@ export function CheckoutForm() {
                 </div>
               </div>
 
-              {/* Save to account checkbox */}
               {user && (
                 <label className="flex items-center gap-2.5 cursor-pointer group w-fit">
                   <input
@@ -478,12 +537,9 @@ export function CheckoutForm() {
               <p className="font-bold text-slate-900">Cash on Delivery</p>
               <p className="text-xs text-slate-500 mt-0.5">Pay in cash when your order arrives. No extra charges.</p>
             </div>
-            <span className="shrink-0 text-[10px] font-black bg-slate-900 text-white px-2.5 py-1 rounded-lg uppercase tracking-wide">
-              Recommended
-            </span>
           </label>
 
-          {/* Online */}
+          {/* Online (Razorpay) */}
           <label
             onClick={() => setPaymentMethod('ONLINE')}
             className={`flex items-center gap-4 p-4 border-2 rounded-2xl cursor-pointer transition-all ${
@@ -500,13 +556,22 @@ export function CheckoutForm() {
             <CreditCard className={`h-6 w-6 shrink-0 ${paymentMethod === 'ONLINE' ? 'text-primary' : 'text-slate-400'}`} />
             <div className="flex-1">
               <p className="font-bold text-slate-900">Online Payment</p>
-              <p className="text-xs text-slate-500 mt-0.5">UPI, Debit / Credit Card, Net Banking.</p>
+              <p className="text-xs text-slate-500 mt-0.5">UPI, Debit / Credit Card, Net Banking — powered by Razorpay.</p>
             </div>
+            <span className="shrink-0 text-[10px] font-black bg-slate-900 text-white px-2.5 py-1 rounded-lg uppercase tracking-wide">
+              Recommended
+            </span>
           </label>
+
+          {paymentMethod === 'ONLINE' && (
+            <p className="text-xs text-slate-400 px-1 leading-relaxed">
+              You will be redirected to Razorpay&apos;s secure checkout after clicking &quot;Pay Online&quot;. Your card details are never stored on our servers.
+            </p>
+          )}
         </div>
       </div>
 
-      {/* ── Place Order ── */}
+      {/* ── Place / Pay button ── */}
       <Button
         type="button"
         onClick={() => placeOrder.mutate()}
@@ -514,9 +579,8 @@ export function CheckoutForm() {
         className="w-full h-14 rounded-2xl font-bold text-lg shadow-xl shadow-primary/25 hover:-translate-y-0.5 active:translate-y-0 transition-all disabled:translate-y-0"
         size="lg"
       >
-        {placeOrder.isPending
-          ? 'Placing your order...'
-          : `Place Order · ${formatPrice(postDiscountTotal + shippingFeeEstimate + calculateGST(postDiscountTotal, gstRate))}`}
+        {placeOrder.isPending && <Loader2 className="h-5 w-5 animate-spin mr-2" />}
+        {buttonLabel}
       </Button>
 
       {!canPlaceOrder && showNewForm && (
