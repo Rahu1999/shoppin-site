@@ -13,6 +13,7 @@ import { getPaginationParams, buildPaginationMeta } from '@utils/pagination';
 import { OrderStatus } from '@entities/order-status.enum';
 import { sendMail } from '@utils/emailService';
 import { orderConfirmationEmail, orderStatusEmail } from '@utils/emailTemplates';
+import { EmailJobs } from '../../jobs/email.jobs';
 import { TaxConfig } from '@entities/tax-config.entity';
 import { ShippingConfig } from '@entities/shipping-config.entity';
 
@@ -223,6 +224,27 @@ export class OrdersService {
           paymentMethod: data.paymentMethod || 'COD',
         });
         sendMail({ to: user.email, subject: tpl.subject, html: tpl.html });
+
+        // Notify admin of new order (fire and forget)
+        EmailJobs.sendAdminNewOrderNotification({
+          orderId: completedOrder.id,
+          customerName: `${user.firstName} ${user.lastName || ''}`.trim(),
+          customerEmail: user.email,
+          items: (completedOrder.items || []).map(i => ({
+            name: i.name,
+            quantity: i.quantity,
+            price: Number(i.price),
+          })),
+          subtotal: Number(completedOrder.subtotal),
+          shippingFee: Number(completedOrder.shippingFee),
+          shippingMethodName: completedOrder.shippingMethodName,
+          tax: Number(completedOrder.tax),
+          taxRate: Number(completedOrder.taxRate),
+          discount: Number(completedOrder.discount),
+          total: Number(completedOrder.total),
+          shippingAddress: shippingAddress as Record<string, string>,
+          paymentMethod: data.paymentMethod || 'COD',
+        }).catch(() => {/* already logged inside */});
       }
 
       return completedOrder;

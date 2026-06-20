@@ -255,6 +255,119 @@ export function orderStatusEmail(opts: {
   };
 }
 
+// ── Admin: New Order Notification ──────────────────────────────────────────
+export function adminNewOrderEmail(opts: {
+  orderId: string;
+  customerName: string;
+  customerEmail: string;
+  items: Array<{ name: string; quantity: number; price: number }>;
+  subtotal: number;
+  shippingFee: number;
+  shippingMethodName?: string;
+  tax: number;
+  taxRate: number;
+  discount: number;
+  total: number;
+  shippingAddress: Record<string, string>;
+  paymentMethod: string;
+}): { subject: string; html: string } {
+  const { orderId, customerName, customerEmail, items, subtotal, shippingFee, shippingMethodName, tax, taxRate, discount, total, shippingAddress, paymentMethod } = opts;
+  const shortId = orderId.slice(0, 8).toUpperCase();
+  const isCod = paymentMethod?.toLowerCase() === 'cod';
+
+  const itemRows = items.map(i => `
+    <tr>
+      <td style="padding:10px 0;border-bottom:1px solid #f0f0f0;color:#333;font-size:14px;">${i.name}</td>
+      <td style="padding:10px 0;border-bottom:1px solid #f0f0f0;color:#555;font-size:14px;text-align:center;">×${i.quantity}</td>
+      <td style="padding:10px 0;border-bottom:1px solid #f0f0f0;color:#333;font-size:14px;text-align:right;font-weight:700;">₹${(Number(i.price) * i.quantity).toFixed(2)}</td>
+    </tr>
+  `).join('');
+
+  const address = shippingAddress;
+
+  return {
+    subject: `🛒 New Order #${shortId} — ₹${Number(total).toFixed(0)} (${isCod ? 'COD' : 'Prepaid'})`,
+    html: baseLayout(`New Order #${shortId}`, `
+      <div style="background:#eff6ff;border:1px solid #bfdbfe;border-radius:8px;padding:16px 20px;margin-bottom:28px;">
+        <p style="margin:0;font-weight:900;color:#1e40af;font-size:16px;">🛒 New Order Received!</p>
+        <p style="margin:6px 0 0;color:#1e40af;font-size:13px;">Order <strong>#${shortId}</strong> · ${isCod ? '⚠️ Cash on Delivery' : '✅ Prepaid'}</p>
+      </div>
+
+      <!-- Customer Info -->
+      <div style="background:#f8fafc;border-radius:8px;padding:16px 20px;margin-bottom:24px;">
+        <p style="margin:0 0 4px;font-size:12px;color:#888;font-weight:700;text-transform:uppercase;letter-spacing:1px;">Customer</p>
+        <p style="margin:0;color:#1a1a2e;font-size:15px;font-weight:700;">${customerName}</p>
+        <p style="margin:2px 0 0;color:#555;font-size:13px;">${customerEmail}</p>
+      </div>
+
+      <!-- Items Table -->
+      <table width="100%" cellpadding="0" cellspacing="0" style="margin-bottom:20px;">
+        <thead>
+          <tr style="background:#f8f8f8;">
+            <th style="padding:10px 0;text-align:left;font-size:12px;color:#888;font-weight:700;letter-spacing:1px;text-transform:uppercase;">Item</th>
+            <th style="padding:10px 0;text-align:center;font-size:12px;color:#888;font-weight:700;letter-spacing:1px;text-transform:uppercase;">Qty</th>
+            <th style="padding:10px 0;text-align:right;font-size:12px;color:#888;font-weight:700;letter-spacing:1px;text-transform:uppercase;">Amount</th>
+          </tr>
+        </thead>
+        <tbody>${itemRows}</tbody>
+        <tfoot>
+          <tr>
+            <td colspan="2" style="padding:12px 0 4px;font-size:13px;color:#888;">Subtotal</td>
+            <td style="padding:12px 0 4px;text-align:right;font-size:13px;color:#333;font-weight:700;">₹${Number(subtotal).toFixed(2)}</td>
+          </tr>
+          ${discount > 0 ? `<tr>
+            <td colspan="2" style="padding:4px 0;font-size:13px;color:#888;">Discount</td>
+            <td style="padding:4px 0;text-align:right;font-size:13px;color:#16a34a;font-weight:700;">−₹${Number(discount).toFixed(2)}</td>
+          </tr>` : ''}
+          <tr>
+            <td colspan="2" style="padding:4px 0;font-size:13px;color:#888;">${shippingMethodName || 'Shipping'}</td>
+            <td style="padding:4px 0;text-align:right;font-size:13px;color:${shippingFee > 0 ? '#333' : '#16a34a'};font-weight:700;">${shippingFee > 0 ? `₹${Number(shippingFee).toFixed(2)}` : 'Free'}</td>
+          </tr>
+          ${tax > 0 ? `<tr>
+            <td colspan="2" style="padding:4px 0;font-size:13px;color:#888;">GST (${Number(taxRate).toFixed(0)}%)</td>
+            <td style="padding:4px 0;text-align:right;font-size:13px;color:#333;font-weight:700;">₹${Number(tax).toFixed(2)}</td>
+          </tr>` : ''}
+          <tr>
+            <td colspan="2" style="padding:10px 0 4px;font-size:17px;font-weight:900;color:${BRAND_COLOR};">Total</td>
+            <td style="padding:10px 0 4px;text-align:right;font-size:22px;font-weight:900;color:${ACCENT_COLOR};">₹${Number(total).toFixed(2)}</td>
+          </tr>
+        </tfoot>
+      </table>
+
+      ${divider()}
+
+      <!-- Address + Payment -->
+      <table width="100%" cellpadding="0" cellspacing="0">
+        <tr>
+          <td style="vertical-align:top;width:50%;padding-right:16px;">
+            <p style="margin:0 0 8px;font-weight:900;color:${BRAND_COLOR};font-size:13px;text-transform:uppercase;letter-spacing:1px;">📦 Ship To</p>
+            <p style="margin:0;color:#555;font-size:13px;line-height:1.8;">
+              ${address.fullName || ''}<br/>
+              ${address.line1 || ''}${address.line2 ? '<br/>' + address.line2 : ''}<br/>
+              ${address.city || ''}, ${address.state || ''} ${address.postalCode || ''}<br/>
+              ${address.country || ''}
+              ${address.phone ? `<br/>📞 ${address.phone}` : ''}
+            </p>
+          </td>
+          <td style="vertical-align:top;width:50%;padding-left:16px;border-left:1px solid #eee;">
+            <p style="margin:0 0 8px;font-weight:900;color:${BRAND_COLOR};font-size:13px;text-transform:uppercase;letter-spacing:1px;">💳 Payment</p>
+            <p style="margin:0;color:#555;font-size:13px;line-height:1.8;">
+              ${isCod ? 'Cash on Delivery' : paymentMethod}<br/>
+              <span style="background:${isCod ? '#fef9c3' : '#dcfce7'};color:${isCod ? '#854d0e' : '#166534'};font-size:11px;font-weight:700;padding:2px 8px;border-radius:4px;text-transform:uppercase;">${isCod ? '⚠️ Collect on Delivery' : '✅ Already Paid'}</span>
+            </p>
+          </td>
+        </tr>
+      </table>
+
+      ${divider()}
+
+      <div style="text-align:center;margin-top:8px;">
+        ${btn('View Order in Admin', `${FRONTEND_URL}/admin/orders`)}
+      </div>
+    `),
+  };
+}
+
 // ── Password Reset Email ────────────────────────────────────────────────────
 export function passwordResetEmail(opts: {
   firstName: string;

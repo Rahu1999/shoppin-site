@@ -1,6 +1,7 @@
 import { sendMail } from '@utils/emailService';
-import { welcomeEmail, orderConfirmationEmail, passwordResetEmail } from '@utils/emailTemplates';
+import { welcomeEmail, orderConfirmationEmail, passwordResetEmail, adminNewOrderEmail } from '@utils/emailTemplates';
 import { logger } from '../config/logger';
+import { env } from '@config/env';
 
 export class EmailJobs {
   static async sendOrderConfirmation(
@@ -40,6 +41,36 @@ export class EmailJobs {
       return true;
     } catch (e) {
       logger.error(`[EmailJobs] sendWelcomeEmail failed for ${email}:`, e);
+      return false;
+    }
+  }
+
+  static async sendAdminNewOrderNotification(opts: {
+    orderId: string;
+    customerName: string;
+    customerEmail: string;
+    items: Array<{ name: string; quantity: number; price: number }>;
+    subtotal: number;
+    shippingFee: number;
+    shippingMethodName?: string;
+    tax: number;
+    taxRate: number;
+    discount: number;
+    total: number;
+    shippingAddress: Record<string, string>;
+    paymentMethod: string;
+  }) {
+    const adminEmail = env.ADMIN_EMAIL;
+    if (!adminEmail) {
+      logger.warn('[EmailJobs] ADMIN_EMAIL not set — skipping admin order notification');
+      return false;
+    }
+    try {
+      const tpl = adminNewOrderEmail(opts);
+      await sendMail({ to: adminEmail, subject: tpl.subject, html: tpl.html });
+      return true;
+    } catch (e) {
+      logger.error(`[EmailJobs] sendAdminNewOrderNotification failed:`, e);
       return false;
     }
   }

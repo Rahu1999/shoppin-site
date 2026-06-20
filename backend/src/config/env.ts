@@ -44,6 +44,7 @@ export const env = {
   SMTP_USER: process.env.SMTP_USER ?? '',
   SMTP_PASS: process.env.SMTP_PASS ?? '',
   SMTP_FROM: process.env.SMTP_FROM ?? 'noreply@example.com',
+  ADMIN_EMAIL: process.env.ADMIN_EMAIL ?? process.env.SMTP_USER ?? '',
 
   // Rate limiting
   RATE_LIMIT_WINDOW_MS: parseInt(process.env.RATE_LIMIT_WINDOW_MS ?? '900000', 10),
