@@ -2,9 +2,7 @@ import type { Metadata } from "next";
 import { Inter } from "next/font/google";
 import "./globals.css";
 import { ReactQueryProvider } from "@/components/providers/ReactQueryProvider";
-import { Navbar } from "@/components/layout/Navbar";
-import { Footer } from "@/components/layout/Footer";
-import { WhatsAppButton } from "@/components/ui/WhatsAppButton";
+import { ConditionalShell } from "@/components/layout/ConditionalShell";
 import { Suspense } from "react";
 import { Toaster } from "sonner";
 import { BRAND } from "@/config/brand";
@@ -49,12 +47,8 @@ export default function RootLayout({
         <Toaster position="top-right" richColors />
         <ReactQueryProvider>
           <Suspense fallback={null}>
-            <Navbar />
+            <ConditionalShell>{children}</ConditionalShell>
           </Suspense>
-          <main className="flex-grow">{children}</main>
-          <Footer />
-          {/* Global floating WhatsApp button */}
-          <WhatsAppButton />
         </ReactQueryProvider>
       </body>
     </html>
