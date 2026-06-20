@@ -6,7 +6,7 @@
 export const BRAND = {
   name: 'Rajesh Industries',
   shortName: 'Rajesh Ind.',
-  tagline: 'Smart Steel Storage Solutions',
+  tagline: 'Smart Steel Furniture Solutions',
   subTagline: 'Durable. Space-saving. Designed for modern homes.',
   domain: 'steelkitchen.in',
 

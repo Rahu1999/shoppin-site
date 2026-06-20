@@ -1,10 +1,11 @@
 import { AppDataSource } from '@config/database';
 import { Product } from '@entities/product.entity';
+import { ProductVariant } from '@entities/product-variant.entity';
 import { ProductImage } from '@entities/product-image.entity';
 import { Inventory } from '@entities/inventory.entity';
 import { AppError } from '@utils/AppError';
 import { getPaginationParams, buildPaginationMeta } from '@utils/pagination';
-import { Brackets } from 'typeorm';
+import { Brackets, In, IsNull } from 'typeorm';
 
 export class ProductsService {
   private productRepo = AppDataSource.getRepository(Product);
@@ -18,7 +19,12 @@ export class ProductsService {
       .leftJoinAndSelect('product.category', 'category')
       .leftJoinAndSelect('product.inventory', 'inventory');
 
-    if (!query.adminView) {
+    if (query.adminView) {
+      // Admin gets all products + variants for the product form
+      queryBuilder
+        .leftJoinAndSelect('product.variants', 'variants')
+        .leftJoinAndSelect('variants.inventory', 'variantInventory');
+    } else {
       queryBuilder.andWhere('product.isActive = :isActive', { isActive: true });
     }
 
@@ -51,9 +57,9 @@ export class ProductsService {
     }
 
     if (query.minPrice && query.maxPrice) {
-      queryBuilder.andWhere('product.basePrice BETWEEN :min AND :max', { 
-        min: Number(query.minPrice), 
-        max: Number(query.maxPrice) 
+      queryBuilder.andWhere('product.basePrice BETWEEN :min AND :max', {
+        min: Number(query.minPrice),
+        max: Number(query.maxPrice),
       });
     } else if (query.minPrice) {
       queryBuilder.andWhere('product.basePrice >= :min', { min: Number(query.minPrice) });
@@ -67,19 +73,15 @@ export class ProductsService {
       queryBuilder.orderBy('product.createdAt', 'DESC');
     }
 
-    const [items, total] = await queryBuilder
-      .skip(skip)
-      .take(limit)
-      .getManyAndCount();
+    const [items, total] = await queryBuilder.skip(skip).take(limit).getManyAndCount();
 
-    // Sort images by sortOrder and Flatten inventory
-    const enrichedItems = items.map(product => {
+    const enrichedItems = items.map((product) => {
       if (product.images) {
         product.images.sort((a, b) => (a.sortOrder || 0) - (b.sortOrder || 0));
       }
       return {
         ...product,
-        stock: product.inventory?.reduce((sum, inv) => sum + (inv.quantity || 0) - (inv.reserved || 0), 0) || 0
+        stock: product.inventory?.reduce((sum, inv) => sum + Math.max(0, (inv.quantity || 0) - (inv.reserved || 0)), 0) || 0,
       };
     });
 
@@ -89,17 +91,21 @@ export class ProductsService {
   public async getProductBySlug(slug: string) {
     const product = await this.productRepo.findOne({
       where: { slug, isActive: true },
-      relations: ['images', 'brand', 'category', 'variants', 'reviews'],
+      relations: ['images', 'brand', 'category', 'variants', 'variants.inventory', 'inventory', 'reviews'],
     });
 
     if (!product) throw AppError.notFound('Product');
-    
-    // Sort images by sortOrder
+
     if (product.images) {
       product.images.sort((a, b) => (a.sortOrder || 0) - (b.sortOrder || 0));
     }
-    
-    return product;
+
+    // Compute total stock for non-variant products
+    const stock = product.inventory
+      ?.filter((inv) => !inv.variantId)
+      .reduce((sum, inv) => sum + Math.max(0, (inv.quantity || 0) - (inv.reserved || 0)), 0) || 0;
+
+    return { ...product, stock };
   }
 
   // Admin Methods
@@ -107,7 +113,7 @@ export class ProductsService {
     const existing = await this.productRepo.findOneBy({ slug: data.slug });
     if (existing) throw AppError.conflict('Product with this slug already exists');
 
-    const { stockQuantity, images, imageUrls, ...productData } = data;
+    const { stockQuantity, images, imageUrls, variants, ...productData } = data;
 
     if (productData.sku === '') productData.sku = null;
     if (productData.comparePrice === 0) productData.comparePrice = null;
@@ -129,13 +135,34 @@ export class ProductsService {
         await manager.save(ProductImage, imageEntities);
       }
 
-      if (stockQuantity !== undefined) {
-        const inventory = manager.create(Inventory, {
-          productId: savedProduct.id,
-          quantity: stockQuantity,
-          reserved: 0,
-        });
-        await manager.save(Inventory, inventory);
+      if (Array.isArray(variants) && variants.length > 0) {
+        // Product has size variants — create each variant + its inventory
+        for (const v of variants) {
+          const { stockQuantity: variantStock, id: _id, ...variantData } = v;
+          if (variantData.sku === '') variantData.sku = null;
+          if (variantData.comparePrice === 0) variantData.comparePrice = null;
+
+          const variant = manager.create(ProductVariant, { ...variantData, productId: savedProduct.id });
+          const savedVariant = await manager.save(variant);
+
+          await manager.save(
+            manager.create(Inventory, {
+              productId: savedProduct.id,
+              variantId: savedVariant.id,
+              quantity: variantStock ?? 0,
+              reserved: 0,
+            })
+          );
+        }
+      } else if (stockQuantity !== undefined) {
+        // No variants — create a single base inventory record
+        await manager.save(
+          manager.create(Inventory, {
+            productId: savedProduct.id,
+            quantity: stockQuantity,
+            reserved: 0,
+          })
+        );
       }
 
       return savedProduct;
@@ -143,12 +170,12 @@ export class ProductsService {
 
     return this.productRepo.findOne({
       where: { id: result.id },
-      relations: ['images', 'category', 'inventory'],
+      relations: ['images', 'category', 'inventory', 'variants', 'variants.inventory'],
     });
   }
 
   public async updateProduct(id: string, data: Record<string, any>) {
-    const { images, stockQuantity, imageUrls, ...updateData } = data;
+    const { images, stockQuantity, imageUrls, variants, ...updateData } = data;
 
     if (updateData.sku === '') updateData.sku = null;
     if (updateData.comparePrice === 0) updateData.comparePrice = null;
@@ -171,20 +198,73 @@ export class ProductsService {
         await manager.save(ProductImage, imageEntities);
       }
 
-      if (stockQuantity !== undefined) {
+      // variants === undefined means "don't touch variants"
+      // variants === [] means "remove all variants"
+      // variants === [...] means "full replace — upsert incoming, delete removed"
+      if (variants !== undefined) {
+        const variantRepo = manager.getRepository(ProductVariant);
         const inventoryRepo = manager.getRepository(Inventory);
-        const inventory = await inventoryRepo.findOneBy({ productId: id });
-        
+
+        const existingVariants = await variantRepo.findBy({ productId: id });
+        const incomingIds = (variants as any[]).filter((v) => v.id).map((v) => v.id);
+
+        // Remove variants not present in the incoming list
+        const toDelete = existingVariants
+          .filter((ev) => !incomingIds.includes(ev.id))
+          .map((ev) => ev.id);
+
+        if (toDelete.length > 0) {
+          await inventoryRepo.delete({ variantId: In(toDelete) });
+          await variantRepo.softDelete(toDelete);
+        }
+
+        // Upsert each incoming variant
+        for (const v of variants as any[]) {
+          const { stockQuantity: variantStock, id: variantId, ...variantData } = v;
+          if (variantData.sku === '') variantData.sku = null;
+          if (variantData.comparePrice === 0) variantData.comparePrice = null;
+
+          if (variantId) {
+            // Update existing variant fields
+            await variantRepo.update(variantId, variantData);
+            // Sync its inventory
+            if (variantStock !== undefined) {
+              const inv = await inventoryRepo.findOneBy({ variantId });
+              if (inv) {
+                inv.quantity = variantStock;
+                await manager.save(inv);
+              } else {
+                await manager.save(
+                  manager.create(Inventory, { productId: id, variantId, quantity: variantStock, reserved: 0 })
+                );
+              }
+            }
+          } else {
+            // Create brand-new variant
+            const newVariant = manager.create(ProductVariant, { ...variantData, productId: id });
+            const savedVariant = await manager.save(newVariant);
+            await manager.save(
+              manager.create(Inventory, {
+                productId: id,
+                variantId: savedVariant.id,
+                quantity: variantStock ?? 0,
+                reserved: 0,
+              })
+            );
+          }
+        }
+      } else if (stockQuantity !== undefined) {
+        // No-variant product — update base inventory
+        const inventoryRepo = manager.getRepository(Inventory);
+        const inventory = await inventoryRepo.findOneBy({ productId: id, variantId: IsNull() });
+
         if (inventory) {
           inventory.quantity = stockQuantity;
           await manager.save(Inventory, inventory);
         } else {
-          const newInv = manager.create(Inventory, {
-            productId: id,
-            quantity: stockQuantity,
-            reserved: 0
-          });
-          await manager.save(Inventory, newInv);
+          await manager.save(
+            manager.create(Inventory, { productId: id, quantity: stockQuantity, reserved: 0 })
+          );
         }
       }
 
@@ -193,7 +273,7 @@ export class ProductsService {
 
     return this.productRepo.findOne({
       where: { id },
-      relations: ['images', 'category', 'inventory']
+      relations: ['images', 'category', 'inventory', 'variants', 'variants.inventory'],
     });
   }
 

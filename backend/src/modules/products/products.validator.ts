@@ -1,5 +1,16 @@
 import { z } from 'zod';
 
+const variantInputSchema = z.object({
+  id: z.string().uuid().optional(),
+  name: z.string().min(1).max(200),
+  sku: z.string().max(100).optional().nullable(),
+  price: z.number().positive(),
+  comparePrice: z.number().positive().optional().nullable(),
+  attributes: z.record(z.string()).optional().nullable(),
+  isActive: z.boolean().optional().default(true),
+  stockQuantity: z.number().int().min(0).optional().default(0),
+});
+
 export const getProductsQuerySchema = z.object({
   page: z.string().optional(),
   limit: z.string().optional(),
@@ -32,6 +43,7 @@ export const createProductSchema = z.object({
   images: z.array(z.string()).optional(),
   imageUrls: z.array(z.string()).optional(),
   stockQuantity: z.number().optional().default(0),
+  variants: z.array(variantInputSchema).optional(),
 });
 
 export const updateProductSchema = createProductSchema.partial();

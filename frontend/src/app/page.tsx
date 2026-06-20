@@ -107,7 +107,7 @@ export default function Home() {
 
               <h1 className="text-5xl md:text-6xl lg:text-7xl font-bold text-gray-900 leading-[1.05] tracking-tight">
                 Smart Steel<br />
-                <span className="text-gray-400">Storage</span><br />
+                <span className="text-gray-400">Furniture</span><br />
                 Solutions
               </h1>
 

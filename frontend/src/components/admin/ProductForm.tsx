@@ -1,12 +1,22 @@
 'use client';
 
 import { useState } from 'react';
-import { Trash2 } from 'lucide-react';
+import { Trash2, Plus } from 'lucide-react';
 import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { apiPost, apiPatch } from '@/services/apiClient';
 import { toast } from 'sonner';
+
+interface VariantRow {
+  id?: string;
+  name: string;
+  sku: string;
+  price: number | string;
+  comparePrice: number | string;
+  stockQuantity: number | string;
+  isActive: boolean;
+}
 
 interface ProductFormProps {
   product?: any;
@@ -21,6 +31,21 @@ const slugify = (s: string) =>
 export function ProductForm({ product, categories, onSuccess, onCancel }: ProductFormProps) {
   const queryClient = useQueryClient();
   const isEdit = !!product?.id;
+
+  const initialVariants: VariantRow[] =
+    product?.variants?.map((v: any) => ({
+      id: v.id,
+      name: v.name,
+      sku: v.sku || '',
+      price: Number(v.price) || 0,
+      comparePrice: Number(v.comparePrice) || 0,
+      stockQuantity:
+        v.inventory?.reduce((s: number, i: any) => s + Math.max(0, (i.quantity || 0) - (i.reserved || 0)), 0) ?? 0,
+      isActive: v.isActive ?? true,
+    })) || [];
+
+  const [hasVariants, setHasVariants] = useState(initialVariants.length > 0);
+  const [variants, setVariants] = useState<VariantRow[]>(initialVariants);
 
   const [slugManuallyEdited, setSlugManuallyEdited] = useState(isEdit);
   const [formData, setFormData] = useState({
@@ -70,12 +95,12 @@ export function ProductForm({ product, categories, onSuccess, onCancel }: Produc
     if (files.length === 0) return;
 
     const newPreviews: string[] = [];
-    files.forEach(file => {
+    files.forEach((file) => {
       const reader = new FileReader();
       reader.onloadend = () => {
         newPreviews.push(reader.result as string);
         if (newPreviews.length === files.length) {
-          setPreviews(prev => [...prev, ...newPreviews]);
+          setPreviews((prev) => [...prev, ...newPreviews]);
         }
       };
       reader.readAsDataURL(file);
@@ -84,9 +109,9 @@ export function ProductForm({ product, categories, onSuccess, onCancel }: Produc
     setUploading(true);
     try {
       const formDataUpload = new FormData();
-      files.forEach(file => formDataUpload.append('images', file));
+      files.forEach((file) => formDataUpload.append('images', file));
       const response = await apiPost<{ urls: string[] }>('/upload', formDataUpload);
-      setFormData(prev => ({ ...prev, imageUrls: [...prev.imageUrls, ...response.urls] }));
+      setFormData((prev) => ({ ...prev, imageUrls: [...prev.imageUrls, ...response.urls] }));
     } catch {
       toast.error('Failed to upload images. Please try again.');
     } finally {
@@ -95,41 +120,83 @@ export function ProductForm({ product, categories, onSuccess, onCancel }: Produc
   };
 
   const removeImage = (index: number) => {
-    setPreviews(prev => prev.filter((_, i) => i !== index));
-    setFormData(prev => ({ ...prev, imageUrls: prev.imageUrls.filter((_: string, i: number) => i !== index) }));
+    setPreviews((prev) => prev.filter((_, i) => i !== index));
+    setFormData((prev) => ({ ...prev, imageUrls: prev.imageUrls.filter((_: string, i: number) => i !== index) }));
   };
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
     const { name, value, type } = e.target;
     if (name === 'name') {
-      setFormData(prev => ({
+      setFormData((prev) => ({
         ...prev,
         name: value,
         slug: slugManuallyEdited ? prev.slug : slugify(value),
       }));
       return;
     }
-    if (name === 'slug') {
-      setSlugManuallyEdited(true);
-    }
-    setFormData(prev => ({
+    if (name === 'slug') setSlugManuallyEdited(true);
+    setFormData((prev) => ({
       ...prev,
       [name]: type === 'number' ? (value === '' ? '' : Number(value)) : value,
     }));
   };
 
+  // Variant helpers
+  const addVariant = () => {
+    setVariants((prev) => [
+      ...prev,
+      { name: '', sku: '', price: 0, comparePrice: 0, stockQuantity: 0, isActive: true },
+    ]);
+  };
+
+  const removeVariant = (index: number) => {
+    setVariants((prev) => prev.filter((_, i) => i !== index));
+  };
+
+  const updateVariant = (index: number, field: keyof VariantRow, value: any) => {
+    setVariants((prev) => prev.map((v, i) => (i === index ? { ...v, [field]: value } : v)));
+  };
+
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    const payload = {
+
+    if (hasVariants && variants.length === 0) {
+      toast.error('Add at least one size, or disable size variations.');
+      return;
+    }
+    if (hasVariants && variants.some((v) => !v.name.trim())) {
+      toast.error('All size variants must have a name.');
+      return;
+    }
+
+    const payload: any = {
       ...formData,
       sku: formData.sku.trim() || null,
       basePrice: Number(formData.basePrice),
       comparePrice: formData.comparePrice ? Number(formData.comparePrice) : null,
       costPrice: formData.costPrice ? Number(formData.costPrice) : null,
       weightGrams: formData.weightGrams ? Number(formData.weightGrams) : null,
-      stockQuantity: Number(formData.stockQuantity),
       images: formData.imageUrls,
+      // Always send variants so backend can add/remove/clear them
+      variants: variants.map((v) => ({
+        ...(v.id ? { id: v.id } : {}),
+        name: v.name.trim(),
+        sku: v.sku.trim() || null,
+        price: Number(v.price),
+        comparePrice: v.comparePrice ? Number(v.comparePrice) : null,
+        stockQuantity: Number(v.stockQuantity),
+        isActive: v.isActive,
+        attributes: { size: v.name.trim() },
+      })),
     };
+
+    // Only include base stockQuantity when there are no variants
+    if (hasVariants) {
+      delete payload.stockQuantity;
+    } else {
+      payload.stockQuantity = Number(formData.stockQuantity);
+    }
+
     mutation.mutate(payload);
   };
 
@@ -151,8 +218,9 @@ export function ProductForm({ product, categories, onSuccess, onCancel }: Produc
 
       <div className="grid grid-cols-2 gap-4">
         <div className="space-y-1.5">
-          <label className="text-sm font-semibold text-slate-700">Price (₹)</label>
+          <label className="text-sm font-semibold text-slate-700">Base Price (₹)</label>
           <Input type="number" name="basePrice" value={formData.basePrice} onChange={handleChange} step="0.01" min="0" required />
+          <p className="text-[10px] text-slate-400">Used when no variant is selected</p>
         </div>
         <div className="space-y-1.5">
           <label className="text-sm font-semibold text-slate-700">Original Price (₹)</label>
@@ -176,10 +244,121 @@ export function ProductForm({ product, categories, onSuccess, onCancel }: Produc
           <label className="text-sm font-semibold text-slate-700">SKU</label>
           <Input name="sku" value={formData.sku} onChange={handleChange} />
         </div>
-        <div className="space-y-1.5">
-          <label className="text-sm font-semibold text-slate-700">Initial Stock</label>
-          <Input type="number" name="stockQuantity" value={formData.stockQuantity} onChange={handleChange} min="0" required />
+        {!hasVariants && (
+          <div className="space-y-1.5">
+            <label className="text-sm font-semibold text-slate-700">Stock Quantity</label>
+            <Input type="number" name="stockQuantity" value={formData.stockQuantity} onChange={handleChange} min="0" required={!hasVariants} />
+          </div>
+        )}
+      </div>
+
+      {/* ── Size Variations ─────────────────────────────────────────────── */}
+      <div className="border border-slate-200 rounded-xl p-4 space-y-3 bg-slate-50/50">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-3">
+            <input
+              type="checkbox"
+              id="hasVariants"
+              checked={hasVariants}
+              onChange={(e) => {
+                setHasVariants(e.target.checked);
+                if (!e.target.checked) setVariants([]);
+              }}
+              className="w-4 h-4 rounded border-slate-300"
+            />
+            <label htmlFor="hasVariants" className="text-sm font-bold text-slate-700">
+              Enable Size Variations
+            </label>
+          </div>
+          {hasVariants && (
+            <button
+              type="button"
+              onClick={addVariant}
+              className="inline-flex items-center gap-1.5 text-xs font-semibold text-primary hover:text-primary/80 transition-colors"
+            >
+              <Plus className="w-3.5 h-3.5" />
+              Add Size
+            </button>
+          )}
         </div>
+
+        {hasVariants && (
+          <div className="space-y-2">
+            {variants.length === 0 && (
+              <p className="text-xs text-slate-400 text-center py-3">
+                No sizes added yet. Click "Add Size" above to add your first variation.
+              </p>
+            )}
+
+            {/* Header row */}
+            {variants.length > 0 && (
+              <div className="grid grid-cols-[1.5fr_1fr_1fr_1fr_0.8fr_32px] gap-2 px-2">
+                <span className="text-[10px] font-bold text-slate-500 uppercase">Size Label</span>
+                <span className="text-[10px] font-bold text-slate-500 uppercase">Price (₹)</span>
+                <span className="text-[10px] font-bold text-slate-500 uppercase">Orig. Price (₹)</span>
+                <span className="text-[10px] font-bold text-slate-500 uppercase">SKU</span>
+                <span className="text-[10px] font-bold text-slate-500 uppercase">Stock</span>
+                <span />
+              </div>
+            )}
+
+            {variants.map((v, i) => (
+              <div
+                key={i}
+                className="grid grid-cols-[1.5fr_1fr_1fr_1fr_0.8fr_32px] gap-2 items-center bg-white border border-slate-200 rounded-lg p-2"
+              >
+                <Input
+                  value={v.name}
+                  onChange={(e) => updateVariant(i, 'name', e.target.value)}
+                  placeholder="e.g. 3-Tier"
+                  required={hasVariants}
+                  className="h-8 text-sm"
+                />
+                <Input
+                  type="number"
+                  value={v.price}
+                  onChange={(e) => updateVariant(i, 'price', e.target.value)}
+                  min="0"
+                  step="0.01"
+                  required={hasVariants}
+                  className="h-8 text-sm"
+                />
+                <Input
+                  type="number"
+                  value={v.comparePrice}
+                  onChange={(e) => updateVariant(i, 'comparePrice', e.target.value)}
+                  min="0"
+                  step="0.01"
+                  className="h-8 text-sm"
+                />
+                <Input
+                  value={v.sku}
+                  onChange={(e) => updateVariant(i, 'sku', e.target.value)}
+                  placeholder="Optional"
+                  className="h-8 text-sm"
+                />
+                <Input
+                  type="number"
+                  value={v.stockQuantity}
+                  onChange={(e) => updateVariant(i, 'stockQuantity', e.target.value)}
+                  min="0"
+                  className="h-8 text-sm"
+                />
+                <button
+                  type="button"
+                  onClick={() => removeVariant(i)}
+                  className="p-1 text-slate-400 hover:text-red-500 rounded transition-colors"
+                >
+                  <Trash2 className="w-4 h-4" />
+                </button>
+              </div>
+            ))}
+
+            <p className="text-[10px] text-slate-400 pt-1">
+              Each size gets its own price and stock. The base price above is a fallback for display on product cards.
+            </p>
+          </div>
+        )}
       </div>
 
       <div className="space-y-1.5">
@@ -222,20 +401,17 @@ export function ProductForm({ product, categories, onSuccess, onCancel }: Produc
           required
         >
           <option value="">Select Category</option>
-          {categories.map(cat => (
-            <option key={cat.id} value={cat.id}>{cat.name}</option>
+          {categories.map((cat) => (
+            <option key={cat.id} value={cat.id}>
+              {cat.name}
+            </option>
           ))}
         </select>
       </div>
 
       <div className="space-y-1.5">
         <label className="text-sm font-semibold text-slate-700">Short Description</label>
-        <Input
-          name="shortDescription"
-          value={formData.shortDescription}
-          onChange={handleChange}
-          placeholder="Brief summary for catalog"
-        />
+        <Input name="shortDescription" value={formData.shortDescription} onChange={handleChange} placeholder="Brief summary for catalog" />
       </div>
 
       <div className="space-y-1.5">
@@ -274,7 +450,7 @@ export function ProductForm({ product, categories, onSuccess, onCancel }: Produc
             type="checkbox"
             id="isActive"
             checked={formData.isActive}
-            onChange={e => setFormData(prev => ({ ...prev, isActive: e.target.checked }))}
+            onChange={(e) => setFormData((prev) => ({ ...prev, isActive: e.target.checked }))}
           />
           <label htmlFor="isActive" className="text-sm font-medium text-slate-700">Active</label>
         </div>
@@ -283,7 +459,7 @@ export function ProductForm({ product, categories, onSuccess, onCancel }: Produc
             type="checkbox"
             id="isFeatured"
             checked={formData.isFeatured}
-            onChange={e => setFormData(prev => ({ ...prev, isFeatured: e.target.checked }))}
+            onChange={(e) => setFormData((prev) => ({ ...prev, isFeatured: e.target.checked }))}
           />
           <label htmlFor="isFeatured" className="text-sm font-medium text-slate-700">Featured</label>
         </div>

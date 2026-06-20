@@ -23,6 +23,14 @@ function extractBullets(description: string): string[] {
     .slice(0, 6);
 }
 
+function getVariantStock(variant: any): number {
+  if (!variant?.inventory) return 0;
+  return variant.inventory.reduce(
+    (s: number, i: any) => s + Math.max(0, (i.quantity || 0) - (i.reserved || 0)),
+    0
+  );
+}
+
 export default function ProductDetailPage() {
   const params = useParams();
   const productId = params.id as string;
@@ -32,6 +40,7 @@ export default function ProductDetailPage() {
   const addToCart = useAddToCart();
   const [qty, setQty] = useState(1);
   const [selectedImage, setSelectedImage] = useState<string | null>(null);
+  const [selectedVariant, setSelectedVariant] = useState<any>(null);
 
   // Related products
   const { data: relatedData } = useProducts({
@@ -48,6 +57,19 @@ export default function ProductDetailPage() {
       setSelectedImage(primary?.url || product.images[0].url);
     }
   }, [product]);
+
+  // Auto-select first active variant when product loads
+  useEffect(() => {
+    if (product?.variants?.length > 0) {
+      const firstActive = product.variants.find((v: any) => v.isActive);
+      if (firstActive) setSelectedVariant(firstActive);
+    }
+  }, [product]);
+
+  // Reset qty when variant changes
+  useEffect(() => {
+    setQty(1);
+  }, [selectedVariant]);
 
   // ── Loading ───────────────────────────────────────────────────────────────
   if (isLoading) {
@@ -73,23 +95,37 @@ export default function ProductDetailPage() {
     );
   }
 
-  const handleAddToCart = () => {
-    addToCart.mutate({ productId: product.id, quantity: qty });
-  };
+  const activeVariants = (product.variants || []).filter((v: any) => v.isActive);
+  const hasVariants = activeVariants.length > 0;
 
-  const hasDiscount =
-    product.comparePrice && Number(product.comparePrice) > Number(product.basePrice);
+  // Price: selected variant > base product
+  const displayPrice = selectedVariant ? Number(selectedVariant.price) : Number(product.basePrice || 0);
+  const displayComparePrice = selectedVariant
+    ? (selectedVariant.comparePrice ? Number(selectedVariant.comparePrice) : null)
+    : (product.comparePrice ? Number(product.comparePrice) : null);
+
+  // Stock: per-variant or base product inventory
+  const currentStock = hasVariants
+    ? (selectedVariant ? getVariantStock(selectedVariant) : 0)
+    : (product.stock || 0);
+
+  const hasDiscount = displayComparePrice && displayComparePrice > displayPrice;
   const discount = hasDiscount
-    ? Math.round(
-        ((Number(product.comparePrice) - Number(product.basePrice)) /
-          Number(product.comparePrice)) *
-          100
-      )
+    ? Math.round(((displayComparePrice - displayPrice) / displayComparePrice) * 100)
     : 0;
 
   const bullets = extractBullets(product.description || '');
-  const isOutOfStock = product.stockQuantity === 0;
+  const isOutOfStock = currentStock === 0;
+  const mustSelectVariant = hasVariants && !selectedVariant;
   const whatsappLink = buildProductWhatsAppLink(product.name);
+
+  const handleAddToCart = () => {
+    addToCart.mutate({
+      productId: product.id,
+      quantity: qty,
+      variantId: selectedVariant?.id,
+    });
+  };
 
   return (
     <div className="bg-white pb-20 pt-6">
@@ -126,7 +162,7 @@ export default function ProductDetailPage() {
                   {discount}% OFF
                 </span>
               )}
-              {isOutOfStock && (
+              {isOutOfStock && !mustSelectVariant && (
                 <div className="absolute inset-0 bg-white/70 flex items-center justify-center">
                   <span className="bg-gray-900 text-white text-sm font-bold px-4 py-2 rounded-lg">
                     Out of Stock
@@ -172,11 +208,11 @@ export default function ProductDetailPage() {
             {/* Price */}
             <div className="flex items-baseline gap-3 mb-6">
               <span className="text-3xl font-bold text-gray-900">
-                {formatPrice(product.basePrice || 0)}
+                {formatPrice(displayPrice)}
               </span>
               {hasDiscount && (
                 <span className="text-xl text-gray-400 line-through font-medium">
-                  {formatPrice(Number(product.comparePrice))}
+                  {formatPrice(displayComparePrice!)}
                 </span>
               )}
             </div>
@@ -186,6 +222,43 @@ export default function ProductDetailPage() {
               <p className="text-gray-600 leading-relaxed text-base mb-6">
                 {product.shortDescription}
               </p>
+            )}
+
+            {/* ── Variant selector ─────────────────────────────────────── */}
+            {hasVariants && (
+              <div className="mb-6">
+                <label className="text-xs font-semibold uppercase tracking-widest text-gray-400 mb-3 block">
+                  Size
+                </label>
+                <div className="flex flex-wrap gap-2">
+                  {activeVariants.map((v: any) => {
+                    const vStock = getVariantStock(v);
+                    const isSelected = selectedVariant?.id === v.id;
+                    const vOutOfStock = vStock === 0;
+                    return (
+                      <button
+                        key={v.id}
+                        onClick={() => setSelectedVariant(v)}
+                        disabled={vOutOfStock}
+                        className={`relative px-5 py-2 rounded-xl border-2 text-sm font-semibold transition-all ${
+                          isSelected
+                            ? 'border-gray-900 bg-gray-900 text-white shadow-md'
+                            : vOutOfStock
+                            ? 'border-gray-100 bg-gray-50 text-gray-300 cursor-not-allowed line-through'
+                            : 'border-gray-200 text-gray-700 hover:border-gray-400 hover:bg-gray-50'
+                        }`}
+                      >
+                        {v.attributes?.size || v.name}
+                        {vOutOfStock && (
+                          <span className="ml-1.5 text-[10px] font-normal normal-case no-underline">
+                            (out of stock)
+                          </span>
+                        )}
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
             )}
 
             {/* Bullet features */}
@@ -206,16 +279,16 @@ export default function ProductDetailPage() {
             )}
 
             {/* Stock indicator */}
-            {product.stockQuantity > 0 && product.stockQuantity <= 10 && (
+            {!mustSelectVariant && currentStock > 0 && currentStock <= 10 && (
               <p className="text-sm font-medium text-orange-600 mb-4">
-                Only {product.stockQuantity} left in stock
+                Only {currentStock} left in stock
               </p>
             )}
 
             {/* Quantity + CTA */}
             <div className="border-t border-gray-100 pt-6 mt-auto">
               {/* Quantity */}
-              {!isOutOfStock && (
+              {!isOutOfStock && !mustSelectVariant && (
                 <div className="mb-4">
                   <label className="text-xs font-semibold uppercase tracking-widest text-gray-400 mb-2 block">
                     Quantity
@@ -231,7 +304,7 @@ export default function ProductDetailPage() {
                     <span className="font-semibold text-gray-900 text-sm">{qty}</span>
                     <button
                       onClick={() => setQty((q) => q + 1)}
-                      disabled={qty >= product.stockQuantity}
+                      disabled={qty >= currentStock}
                       className="p-1.5 text-gray-500 hover:text-gray-900 disabled:opacity-30 rounded-lg transition-colors"
                     >
                       <Plus className="h-4 w-4" />
@@ -245,11 +318,13 @@ export default function ProductDetailPage() {
                 {/* Add to Cart */}
                 <Button
                   onClick={handleAddToCart}
-                  disabled={addToCart.isPending || isOutOfStock}
+                  disabled={addToCart.isPending || isOutOfStock || mustSelectVariant}
                   className="flex-1 h-12 bg-gray-900 hover:bg-gray-700 text-white font-semibold rounded-xl flex items-center justify-center gap-2 text-sm disabled:opacity-50 transition-colors"
                 >
                   <ShoppingCart className="h-4 w-4" />
-                  {isOutOfStock
+                  {mustSelectVariant
+                    ? 'Select a size first'
+                    : isOutOfStock
                     ? 'Out of Stock'
                     : addToCart.isPending
                     ? 'Adding...'
