@@ -168,6 +168,13 @@ export function ProductForm({ product, categories, onSuccess, onCancel }: Produc
       toast.error('All size variants must have a name.');
       return;
     }
+    if (hasVariants) {
+      const skus = variants.map((v) => v.sku.trim()).filter(Boolean);
+      if (new Set(skus).size < skus.length) {
+        toast.error('Each variant must have a unique SKU. Remove duplicate SKUs before saving.');
+        return;
+      }
+    }
 
     const payload: any = {
       ...formData,

@@ -136,6 +136,10 @@ export class ProductsService {
       }
 
       if (Array.isArray(variants) && variants.length > 0) {
+        const incomingSkus = variants.map((v: any) => (v.sku || '').trim()).filter(Boolean);
+        if (new Set(incomingSkus).size < incomingSkus.length) {
+          throw AppError.conflict('Two or more variants share the same SKU. Each variant SKU must be unique.');
+        }
         // Product has size variants — create each variant + its inventory
         for (const v of variants) {
           const { stockQuantity: variantStock, id: _id, ...variantData } = v;
@@ -202,6 +206,12 @@ export class ProductsService {
       // variants === [] means "remove all variants"
       // variants === [...] means "full replace — upsert incoming, delete removed"
       if (variants !== undefined) {
+        // Guard: reject duplicate SKUs within the submitted variants
+        const incomingSkus = (variants as any[]).map((v) => (v.sku || '').trim()).filter(Boolean);
+        if (new Set(incomingSkus).size < incomingSkus.length) {
+          throw AppError.conflict('Two or more variants share the same SKU. Each variant SKU must be unique.');
+        }
+
         const variantRepo = manager.getRepository(ProductVariant);
         const inventoryRepo = manager.getRepository(Inventory);
 
