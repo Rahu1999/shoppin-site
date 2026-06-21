@@ -1,10 +1,10 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useCartStore } from '@/store/cartStore';
 import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
-import { apiPost } from '@/services/apiClient';
+import { apiPost, apiDelete } from '@/services/apiClient';
 import { formatPrice } from '@/utils/price';
 import { useTaxConfig } from '@/hooks/useTaxConfig';
 import { calculateGST } from '@/utils/tax';
@@ -62,6 +62,9 @@ export function CheckoutForm() {
   const [showNewForm, setShowNewForm] = useState(false);
   const [saveToAccount, setSaveToAccount] = useState(true);
   const [paymentMethod, setPaymentMethod] = useState<'COD' | 'ONLINE'>('ONLINE');
+  // Tracks the order ID created before the Razorpay modal opens so we can
+  // cancel it if the user dismisses without paying.
+  const pendingOnlineOrderId = useRef<string | null>(null);
 
   const [newAddr, setNewAddr] = useState({
     fullName: '',
@@ -118,6 +121,7 @@ export function CheckoutForm() {
       const payload: any = {
         items: items.map(i => ({ productId: i.productId, quantity: i.quantity, price: i.price })),
         ...(appliedCoupon ? { couponCode: appliedCoupon.code } : {}),
+        paymentMethod,
       };
 
       if (!showNewForm && selectedAddressId) {
@@ -141,6 +145,7 @@ export function CheckoutForm() {
 
       // ── COD path ──────────────────────────────────────────────────────────
       if (paymentMethod === 'COD') {
+        pendingOnlineOrderId.current = null;
         await apiPost(`/payments/${orderId}/process`, {
           amount: Number(res.total),
           paymentMethod: 'COD',
@@ -156,6 +161,9 @@ export function CheckoutForm() {
       if (!loaded) {
         throw new Error('Could not load the payment gateway. Please check your internet connection and try again.');
       }
+
+      // Track this order so we can cancel it if the user closes the modal
+      pendingOnlineOrderId.current = orderId;
 
       // Step 2: Create Razorpay order on our backend (returns key + rzp order_id)
       const rzpOrderData: any = await apiPost('/payments/razorpay/create-order', { orderId });
@@ -199,6 +207,7 @@ export function CheckoutForm() {
     },
 
     onSuccess: (res: any) => {
+      pendingOnlineOrderId.current = null;
       setConfirmedData({
         orderId: res.id,
         subtotal: Number(res.subtotal ?? total),
@@ -216,11 +225,18 @@ export function CheckoutForm() {
     },
 
     onError: (err: any) => {
-      // User cancelled the Razorpay popup — friendly message, not an error toast
       if (err?.message === 'Payment cancelled') {
+        // Cancel the pending order so inventory is restored and no ghost order
+        // lingers in the user's order list.
+        const orderId = pendingOnlineOrderId.current;
+        pendingOnlineOrderId.current = null;
+        if (orderId) {
+          apiDelete(`/orders/${orderId}/cancel`).catch(() => {});
+        }
         toast.info('Payment was cancelled. Your order has not been placed.');
         return;
       }
+      pendingOnlineOrderId.current = null;
       const msg = err?.response?.data?.message || err?.message || 'Failed to place order. Please try again.';
       toast.error(msg);
     },

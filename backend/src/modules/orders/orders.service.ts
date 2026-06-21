@@ -203,9 +203,12 @@ export class OrdersService {
 
       const completedOrder = await this.orderRepo.findOne({ where: { id: order.id }, relations: ['items'] });
 
-      // Send order confirmation email (fire and forget)
+      // Send confirmation email only for COD. For online payments (Razorpay), the
+      // email is sent after payment signature verification so we never email the
+      // customer about an order they haven't actually paid for yet.
+      const isOnlinePayment = data.paymentMethod === 'ONLINE';
       const user = await this.userRepo.findOneBy({ id: userId });
-      if (completedOrder && user) {
+      if (completedOrder && user && !isOnlinePayment) {
         const tpl = orderConfirmationEmail({
           firstName: user.firstName,
           orderId: completedOrder.id,
@@ -221,7 +224,7 @@ export class OrdersService {
           taxRate: Number(completedOrder.taxRate),
           total: Number(completedOrder.total),
           shippingAddress: shippingAddress as Record<string, string>,
-          paymentMethod: data.paymentMethod || 'COD',
+          paymentMethod: 'COD',
         });
         sendMail({ to: user.email, subject: tpl.subject, html: tpl.html });
 
@@ -243,7 +246,7 @@ export class OrdersService {
           discount: Number(completedOrder.discount),
           total: Number(completedOrder.total),
           shippingAddress: shippingAddress as Record<string, string>,
-          paymentMethod: data.paymentMethod || 'COD',
+          paymentMethod: 'COD',
         }).catch(() => {/* already logged inside */});
       }
 
@@ -297,6 +300,53 @@ export class OrdersService {
     });
 
     return { items, meta: buildPaginationMeta(page, limit, total) };
+  }
+
+  public async cancelPendingOrder(orderId: string, userId: string) {
+    const order = await this.orderRepo.findOne({
+      where: { id: orderId, userId },
+      relations: ['items'],
+    });
+    if (!order) throw AppError.notFound('Order');
+    if (order.status !== OrderStatus.PENDING) {
+      throw AppError.badRequest('Only pending orders can be cancelled this way');
+    }
+
+    const queryRunner = AppDataSource.createQueryRunner();
+    await queryRunner.connect();
+    await queryRunner.startTransaction();
+
+    try {
+      // Restore inventory for each item
+      for (const item of order.items || []) {
+        const inventory = await queryRunner.manager.findOne(Inventory, {
+          where: { productId: item.productId, variantId: item.variantId || undefined },
+          lock: { mode: 'pessimistic_write' },
+        });
+        if (inventory) {
+          inventory.quantity += item.quantity;
+          await queryRunner.manager.save(inventory);
+        }
+      }
+
+      order.status = OrderStatus.CANCELLED;
+      await queryRunner.manager.save(order);
+
+      const history = queryRunner.manager.create(OrderStatusHistory, {
+        orderId: order.id,
+        status: OrderStatus.CANCELLED,
+        notes: 'Cancelled — online payment not completed',
+        changedById: userId,
+      });
+      await queryRunner.manager.save(history);
+
+      await queryRunner.commitTransaction();
+    } catch (err) {
+      await queryRunner.rollbackTransaction();
+      throw err;
+    } finally {
+      await queryRunner.release();
+    }
   }
 
   public async updateOrderStatus(orderId: string, status: OrderStatus, adminId: string, notes?: string) {

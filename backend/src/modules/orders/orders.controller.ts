@@ -32,6 +32,15 @@ export class OrdersController {
     }
   };
 
+  public cancelOrder = async (req: Request, res: Response, next: NextFunction) => {
+    try {
+      await this.ordersService.cancelPendingOrder(req.params.id as string, req.user!.sub);
+      return successResponse(res, null, 'Order cancelled');
+    } catch (error) {
+      next(error);
+    }
+  };
+
   // ADMIN
   public getAllOrders = async (req: Request, res: Response, next: NextFunction) => {
     try {

@@ -13,6 +13,7 @@ router.post('/checkout', authMiddleware, validate(checkoutSchema), controller.ch
 router.post('/', authMiddleware, validate(checkoutSchema), controller.checkout); // Alias for frontend
 router.get('/', authMiddleware, controller.getMyOrders);
 router.get('/:id', authMiddleware, controller.getMyOrder);
+router.delete('/:id/cancel', authMiddleware, controller.cancelOrder);
 
 // Admin Routes
 router.get('/admin/all', authMiddleware, requireAdmin, controller.getAllOrders);

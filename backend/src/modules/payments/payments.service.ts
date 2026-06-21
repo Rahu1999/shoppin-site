@@ -4,15 +4,20 @@ import { AppDataSource } from '@config/database';
 import { Payment } from '@entities/payment.entity';
 import { PaymentTransaction } from '@entities/payment-transaction.entity';
 import { Order } from '@entities/order.entity';
+import { User } from '@entities/user.entity';
 import { AppError } from '@utils/AppError';
 import { OrderStatus } from '@entities/order-status.enum';
 import { PaymentStatus } from '@entities/payment-status.enum';
 import { TransactionType } from '@entities/transaction-type.enum';
+import { sendMail } from '@utils/emailService';
+import { orderConfirmationEmail } from '@utils/emailTemplates';
+import { EmailJobs } from '../../jobs/email.jobs';
 
 export class PaymentsService {
   private paymentRepo = AppDataSource.getRepository(Payment);
   private transactionRepo = AppDataSource.getRepository(PaymentTransaction);
   private orderRepo = AppDataSource.getRepository(Order);
+  private userRepo = AppDataSource.getRepository(User);
 
   private getRazorpayInstance(): Razorpay {
     const keyId = process.env.RAZORPAY_KEY_ID;
@@ -178,6 +183,50 @@ export class PaymentsService {
 
     order.status = OrderStatus.PROCESSING;
     await this.orderRepo.save(order);
+
+    // Send order confirmation email now that payment is verified (fire and forget)
+    const fullOrder = await this.orderRepo.findOne({ where: { id: data.orderId }, relations: ['items'] });
+    const user = await this.userRepo.findOneBy({ id: userId });
+    if (fullOrder && user) {
+      const tpl = orderConfirmationEmail({
+        firstName: user.firstName,
+        orderId: fullOrder.id,
+        items: (fullOrder.items || []).map(i => ({
+          name: i.name,
+          quantity: i.quantity,
+          price: Number(i.price),
+        })),
+        subtotal: Number(fullOrder.subtotal),
+        shippingFee: Number(fullOrder.shippingFee),
+        shippingMethodName: fullOrder.shippingMethodName,
+        tax: Number(fullOrder.tax),
+        taxRate: Number(fullOrder.taxRate),
+        total: Number(fullOrder.total),
+        shippingAddress: fullOrder.shippingAddress as Record<string, string>,
+        paymentMethod: 'Razorpay',
+      });
+      sendMail({ to: user.email, subject: tpl.subject, html: tpl.html });
+
+      EmailJobs.sendAdminNewOrderNotification({
+        orderId: fullOrder.id,
+        customerName: `${user.firstName} ${user.lastName || ''}`.trim(),
+        customerEmail: user.email,
+        items: (fullOrder.items || []).map(i => ({
+          name: i.name,
+          quantity: i.quantity,
+          price: Number(i.price),
+        })),
+        subtotal: Number(fullOrder.subtotal),
+        shippingFee: Number(fullOrder.shippingFee),
+        shippingMethodName: fullOrder.shippingMethodName,
+        tax: Number(fullOrder.tax),
+        taxRate: Number(fullOrder.taxRate),
+        discount: Number(fullOrder.discount),
+        total: Number(fullOrder.total),
+        shippingAddress: fullOrder.shippingAddress as Record<string, string>,
+        paymentMethod: 'Razorpay',
+      }).catch(() => {});
+    }
 
     return payment;
   }
