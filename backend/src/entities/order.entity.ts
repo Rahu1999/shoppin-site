@@ -35,6 +35,12 @@ export class Order extends BaseEntity {
   @Column({ name: 'tax_rate', type: 'decimal', precision: 5, scale: 2, default: 0 })
   taxRate!: number;
 
+  @Column({ name: 'gateway_fee', type: 'decimal', precision: 12, scale: 2, default: 0 })
+  gatewayFee!: number;
+
+  @Column({ name: 'gateway_fee_rate', type: 'decimal', precision: 5, scale: 2, default: 0 })
+  gatewayFeeRate!: number;
+
   @Column({ type: 'decimal', precision: 12, scale: 2 })
   total!: number;
 

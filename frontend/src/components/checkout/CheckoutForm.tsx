@@ -11,6 +11,8 @@ import { calculateGST } from '@/utils/tax';
 import { useShippingConfig } from '@/hooks/useShippingConfig';
 import { calculateShipping } from '@/utils/shipping';
 import { loadRazorpayScript } from '@/utils/loadRazorpay';
+import { usePaymentGatewayConfig } from '@/hooks/usePaymentGatewayConfig';
+import { calculateGatewayFee, gatewayFeeLabel } from '@/utils/gatewayFee';
 import { useMutation, useQuery } from '@tanstack/react-query';
 import { useRouter } from 'next/navigation';
 import {
@@ -42,6 +44,7 @@ export function CheckoutForm() {
   const { data: taxConfig } = useTaxConfig();
   const gstRate = taxConfig?.rate ?? 12;
   const { data: shippingConfig } = useShippingConfig();
+  const { data: gatewayConfig } = usePaymentGatewayConfig();
   const couponDiscount = appliedCoupon?.discount ?? 0;
   const postDiscountTotal = Math.max(0, total - couponDiscount);
   const shippingFeeEstimate = shippingConfig ? calculateShipping(postDiscountTotal, shippingConfig) : 99;
@@ -329,7 +332,11 @@ export function CheckoutForm() {
   );
   const canPlaceOrder = showNewForm ? newFormFilled : !!selectedAddressId;
 
-  const orderTotal = postDiscountTotal + shippingFeeEstimate + calculateGST(postDiscountTotal, gstRate);
+  const preGatewayTotal = postDiscountTotal + shippingFeeEstimate + calculateGST(postDiscountTotal, gstRate);
+  const gatewayFeeEstimate = paymentMethod === 'ONLINE' && gatewayConfig
+    ? calculateGatewayFee(preGatewayTotal, gatewayConfig)
+    : 0;
+  const orderTotal = preGatewayTotal + gatewayFeeEstimate;
 
   const buttonLabel = placeOrder.isPending
     ? (paymentMethod === 'COD' ? 'Placing your order...' : 'Opening payment...')
@@ -580,9 +587,19 @@ export function CheckoutForm() {
           </label>
 
           {paymentMethod === 'ONLINE' && (
-            <p className="text-xs text-slate-400 px-1 leading-relaxed">
-              You will be redirected to Razorpay&apos;s secure checkout after clicking &quot;Pay Online&quot;. Your card details are never stored on our servers.
-            </p>
+            <div className="space-y-1.5 px-1">
+              <p className="text-xs text-slate-400 leading-relaxed">
+                You will be redirected to Razorpay&apos;s secure checkout after clicking &quot;Pay Online&quot;. Your card details are never stored on our servers.
+              </p>
+              {gatewayConfig && gatewayConfig.isEnabled && (
+                <div className="flex items-center justify-between bg-amber-50 border border-amber-100 rounded-xl px-3 py-2">
+                  <span className="text-xs text-amber-700 font-medium">
+                    {gatewayFeeLabel(gatewayConfig)}
+                  </span>
+                  <span className="text-xs font-bold text-amber-800">+{formatPrice(gatewayFeeEstimate)}</span>
+                </div>
+              )}
+            </div>
           )}
         </div>
       </div>

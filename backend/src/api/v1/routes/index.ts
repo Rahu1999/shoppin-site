@@ -13,6 +13,7 @@ import wishlistRoutes from '@modules/wishlists/wishlists.routes';
 import couponRoutes from '@modules/coupons/coupons.routes';
 import shippingRoutes from '@modules/shipping/shipping.routes';
 import taxRoutes from '@modules/tax/tax.routes';
+import paymentGatewayRoutes from '@modules/payment-gateway/payment-gateway.routes';
 
 const router = Router();
 
@@ -30,6 +31,7 @@ router.use('/wishlists', wishlistRoutes);
 router.use('/coupons', couponRoutes);
 router.use('/shipping', shippingRoutes);
 router.use('/tax', taxRoutes);
+router.use('/payment-gateway', paymentGatewayRoutes);
 
 router.get('/health', (req, res) => {
   res.status(200).json({ success: true, message: 'API is running', timestamp: new Date() });

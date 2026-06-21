@@ -12,6 +12,8 @@ import { useTaxConfig } from '@/hooks/useTaxConfig';
 import { calculateGST } from '@/utils/tax';
 import { useShippingConfig } from '@/hooks/useShippingConfig';
 import { calculateShipping } from '@/utils/shipping';
+import { usePaymentGatewayConfig } from '@/hooks/usePaymentGatewayConfig';
+import { calculateGatewayFee, gatewayFeeLabel } from '@/utils/gatewayFee';
 
 export default function CheckoutPage() {
   const { items, total, appliedCoupon } = useCartStore();
@@ -21,11 +23,15 @@ export default function CheckoutPage() {
   const { data: taxConfig } = useTaxConfig();
   const gstRate = taxConfig?.rate ?? 12;
   const { data: shippingConfig } = useShippingConfig();
+  const { data: gatewayConfig } = usePaymentGatewayConfig();
 
   const couponDiscount = appliedCoupon?.discount ?? 0;
   const postDiscountTotal = Math.max(0, total - couponDiscount);
   const shippingFee = shippingConfig ? calculateShipping(postDiscountTotal, shippingConfig) : 99;
   const estimatedTax = calculateGST(postDiscountTotal, gstRate);
+  const estimatedGatewayFee = gatewayConfig
+    ? calculateGatewayFee(postDiscountTotal + shippingFee + estimatedTax, gatewayConfig)
+    : 0;
 
   useEffect(() => { setMounted(true); }, []);
 
@@ -108,10 +114,20 @@ export default function CheckoutPage() {
                     <span className="font-bold text-slate-900">{formatPrice(estimatedTax)}</span>
                   </div>
 
+                  {estimatedGatewayFee > 0 && (
+                    <div className="flex justify-between items-center">
+                      <span className="text-slate-500 font-medium text-xs leading-tight">
+                        {gatewayConfig ? gatewayFeeLabel(gatewayConfig) : 'Gateway Charges'}
+                        <span className="block text-slate-400 font-normal">Online payment only</span>
+                      </span>
+                      <span className="font-bold text-slate-900">{formatPrice(estimatedGatewayFee)}</span>
+                    </div>
+                  )}
+
                   <div className="flex justify-between items-end pt-4 border-t border-slate-100">
                     <span className="text-base font-bold text-slate-900">Total</span>
                     <div className="text-right">
-                      <span className="text-3xl font-black text-primary tracking-tight">{formatPrice(postDiscountTotal + shippingFee + estimatedTax)}</span>
+                      <span className="text-3xl font-black text-primary tracking-tight">{formatPrice(postDiscountTotal + shippingFee + estimatedTax + estimatedGatewayFee)}</span>
                     </div>
                   </div>
                </div>

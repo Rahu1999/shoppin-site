@@ -16,6 +16,7 @@ import { orderConfirmationEmail, orderStatusEmail } from '@utils/emailTemplates'
 import { EmailJobs } from '../../jobs/email.jobs';
 import { TaxConfig } from '@entities/tax-config.entity';
 import { ShippingConfig } from '@entities/shipping-config.entity';
+import { PaymentGatewayConfig } from '@entities/payment-gateway-config.entity';
 
 export class OrdersService {
   private orderRepo = AppDataSource.getRepository(Order);
@@ -28,6 +29,7 @@ export class OrdersService {
   private userRepo = AppDataSource.getRepository(User);
   private taxConfigRepo = AppDataSource.getRepository(TaxConfig);
   private shippingConfigRepo = AppDataSource.getRepository(ShippingConfig);
+  private gatewayConfigRepo = AppDataSource.getRepository(PaymentGatewayConfig);
 
   public async checkout(userId: string, data: Record<string, any>) {
     const cart = await this.cartRepo.findOne({
@@ -112,7 +114,23 @@ export class OrdersService {
     const taxConfig = await this.taxConfigRepo.findOneBy({ isActive: true });
     const taxRate = taxConfig ? Number(taxConfig.rate) : 0;
     const tax = Math.round(taxableAmount * (taxRate / 100) * 100) / 100;
-    const total = taxableAmount + shippingFee + tax;
+
+    // Payment gateway fee — 2% + GST on gateway fee, only for online payments
+    const isOnlinePayment = data.paymentMethod === 'ONLINE';
+    let gatewayFee = 0;
+    let gatewayFeeRate = 0;
+    if (isOnlinePayment) {
+      const gwConfig = await this.gatewayConfigRepo.findOneBy({ isActive: true });
+      if (gwConfig && gwConfig.isEnabled) {
+        gatewayFeeRate = Number(gwConfig.rate);
+        const preTotalForGateway = taxableAmount + shippingFee + tax;
+        const baseFee = preTotalForGateway * (gatewayFeeRate / 100);
+        const feeTax = baseFee * (Number(gwConfig.taxRate) / 100);
+        gatewayFee = Math.round((baseFee + feeTax) * 100) / 100;
+      }
+    }
+
+    const total = taxableAmount + shippingFee + tax + gatewayFee;
 
     const queryRunner = AppDataSource.createQueryRunner();
     await queryRunner.connect();
@@ -144,6 +162,8 @@ export class OrdersService {
         shippingMethodName,
         tax,
         taxRate,
+        gatewayFee,
+        gatewayFeeRate,
         total,
         couponId: coupon?.id,
         shippingAddress,
