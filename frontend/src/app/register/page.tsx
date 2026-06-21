@@ -5,7 +5,7 @@ import { useRegistration } from '@/hooks/useAuth';
 import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
 import Link from 'next/link';
-import { UserPlus, Mail, Lock, User, AlertCircle, ArrowRight } from 'lucide-react';
+import { UserPlus, Mail, Lock, User, AlertCircle, ArrowRight, Eye, EyeOff } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 
 export default function RegisterPage() {
@@ -16,6 +16,7 @@ export default function RegisterPage() {
     password: '',
   });
   
+  const [showPassword, setShowPassword] = useState(false);
   const registerMutation = useRegistration();
   const router = useRouter();
 
@@ -109,16 +110,24 @@ export default function RegisterPage() {
             <label className="text-sm font-bold text-slate-700">Password</label>
             <div className="relative group">
               <Lock className="absolute left-4 top-1/2 -translate-y-1/2 h-5 w-5 text-slate-400 group-focus-within:text-primary transition-colors" />
-              <Input 
-                type="password" 
+              <Input
+                type={showPassword ? 'text' : 'password'}
                 name="password"
-                placeholder="••••••••" 
-                className="pl-12 h-14 bg-slate-50 border-slate-200 rounded-xl focus:bg-white transition-colors text-base"
+                placeholder="••••••••"
+                className="pl-12 pr-12 h-14 bg-slate-50 border-slate-200 rounded-xl focus:bg-white transition-colors text-base"
                 value={formData.password}
                 onChange={handleChange}
                 required
                 minLength={6}
               />
+              <button
+                type="button"
+                onClick={() => setShowPassword(v => !v)}
+                className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 transition-colors"
+                tabIndex={-1}
+              >
+                {showPassword ? <EyeOff className="h-5 w-5" /> : <Eye className="h-5 w-5" />}
+              </button>
             </div>
           </div>
 
@@ -137,24 +146,6 @@ export default function RegisterPage() {
             </Button>
           </div>
         </form>
-
-        <div className="mt-8 flex items-center justify-center gap-4">
-           <div className="h-px bg-slate-200 flex-1" />
-           <span className="text-xs font-bold text-slate-400 uppercase tracking-widest">Or continue with</span>
-           <div className="h-px bg-slate-200 flex-1" />
-        </div>
-
-        <div className="mt-6 flex justify-center">
-           <Button type="button" variant="outline" className="w-full h-14 rounded-xl border-slate-200 bg-white hover:bg-slate-50 hover:border-slate-300 font-bold text-slate-700 shadow-sm flex items-center justify-center gap-3">
-             <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 48 48" width="24px" height="24px">
-               <path fill="#FFC107" d="M43.611,20.083H42V20H24v8h11.303c-1.649,4.657-6.08,8-11.303,8c-6.627,0-12-5.373-12-12c0-6.627,5.373-12,12-12c3.059,0,5.842,1.154,7.961,3.039l5.657-5.657C34.046,6.053,29.268,4,24,4C12.955,4,4,12.955,4,24c0,11.045,8.955,20,20,20c11.045,0,20-8.955,20-20C44,22.659,43.862,21.35,43.611,20.083z"/>
-               <path fill="#FF3D00" d="M6.306,14.691l6.571,4.819C14.655,15.108,18.961,12,24,12c3.059,0,5.842,1.154,7.961,3.039l5.657-5.657C34.046,6.053,29.268,4,24,4C16.318,4,9.656,8.337,6.306,14.691z"/>
-               <path fill="#4CAF50" d="M24,44c5.166,0,9.86-1.977,13.409-5.192l-6.19-5.238C29.211,35.091,26.715,36,24,36c-5.202,0-9.619-3.317-11.283-7.946l-6.522,5.025C9.505,39.556,16.227,44,24,44z"/>
-               <path fill="#1976D2" d="M43.611,20.083H42V20H24v8h11.303c-0.792,2.237-2.231,4.166-4.087,5.571c0.001-0.001,0.002-0.001,0.003-0.002l6.19,5.238C36.971,39.205,44,34,44,24C44,22.659,43.862,21.35,43.611,20.083z"/>
-             </svg>
-             Sign up with Google
-           </Button>
-        </div>
 
         <div className="mt-10 text-center text-base font-medium text-slate-500">
           Already have an account?{' '}
