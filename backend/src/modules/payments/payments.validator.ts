@@ -22,3 +22,16 @@ export const verifyRazorpayPaymentSchema = z.object({
   razorpay_signature: z.string().min(1),
   orderId: z.string().uuid(),
 });
+
+export const createOrderSchema = z.object({
+  orderId: z.string().uuid(),
+  gatewaySlug: z.string().min(1).optional(),
+});
+
+export const verifyPaymentSchema = z
+  .object({
+    orderId: z.string().uuid(),
+    gatewaySlug: z.string().min(1),
+    gatewayOrderId: z.string().min(1),
+  })
+  .passthrough();

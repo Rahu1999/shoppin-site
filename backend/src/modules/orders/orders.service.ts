@@ -17,6 +17,8 @@ import { EmailJobs } from '../../jobs/email.jobs';
 import { TaxConfig } from '@entities/tax-config.entity';
 import { ShippingConfig } from '@entities/shipping-config.entity';
 import { PaymentGatewayConfig } from '@entities/payment-gateway-config.entity';
+import { PartialPaymentConfig } from '@entities/partial-payment-config.entity';
+import { PartialPaymentService } from '@modules/partial-payment/partial-payment.service';
 
 export class OrdersService {
   private orderRepo = AppDataSource.getRepository(Order);
@@ -30,6 +32,7 @@ export class OrdersService {
   private taxConfigRepo = AppDataSource.getRepository(TaxConfig);
   private shippingConfigRepo = AppDataSource.getRepository(ShippingConfig);
   private gatewayConfigRepo = AppDataSource.getRepository(PaymentGatewayConfig);
+  private partialPaymentConfigRepo = AppDataSource.getRepository(PartialPaymentConfig);
 
   public async checkout(userId: string, data: Record<string, any>) {
     const cart = await this.cartRepo.findOne({
@@ -116,7 +119,7 @@ export class OrdersService {
     const tax = Math.round(taxableAmount * (taxRate / 100) * 100) / 100;
 
     // Payment gateway fee — 2% + GST on gateway fee, only for online payments
-    const isOnlinePayment = data.paymentMethod === 'ONLINE';
+    const isOnlinePayment = data.paymentMethod === 'ONLINE' || data.paymentMethod === 'PARTIAL';
     let gatewayFee = 0;
     let gatewayFeeRate = 0;
     if (isOnlinePayment) {
@@ -131,6 +134,21 @@ export class OrdersService {
     }
 
     const total = taxableAmount + shippingFee + tax + gatewayFee;
+
+    // Partial payment — calculate deposit amount from config
+    const isPartialPayment = data.paymentMethod === 'PARTIAL';
+    let depositAmount = 0;
+    if (isPartialPayment) {
+      const ppConfig = await this.partialPaymentConfigRepo.findOneBy({ isActive: true });
+      if (!ppConfig || !ppConfig.isEnabled) {
+        throw AppError.badRequest('Partial payment is not currently available');
+      }
+      if (total < Number(ppConfig.minimumOrderValue)) {
+        throw AppError.badRequest(`Partial payment requires a minimum order of ₹${Number(ppConfig.minimumOrderValue).toLocaleString('en-IN')}`);
+      }
+      const ppService = new PartialPaymentService();
+      depositAmount = ppService.calculateDeposit(total, ppConfig);
+    }
 
     const queryRunner = AppDataSource.createQueryRunner();
     await queryRunner.connect();
@@ -169,6 +187,9 @@ export class OrdersService {
         shippingAddress,
         billingAddress,
         notes: data.notes,
+        isPartialPayment,
+        depositAmount,
+        amountPaid: 0,
       });
       await queryRunner.manager.save(order);
 
@@ -219,7 +240,7 @@ export class OrdersService {
       // 6. Clear Cart — only for COD. For online payments the cart is cleared
       //    inside verifyRazorpayPayment after the signature is confirmed, so
       //    the user can retry if they dismiss the modal without paying.
-      if (data.paymentMethod !== 'ONLINE') {
+      if (data.paymentMethod !== 'ONLINE' && data.paymentMethod !== 'PARTIAL') {
         await queryRunner.manager.delete(Cart, { id: cart.id });
       }
 
@@ -230,9 +251,9 @@ export class OrdersService {
       // Send confirmation email only for COD. For online payments (Razorpay), the
       // email is sent after payment signature verification so we never email the
       // customer about an order they haven't actually paid for yet.
-      const isOnlinePayment = data.paymentMethod === 'ONLINE';
+      const isOnlinePaymentForEmail = data.paymentMethod === 'ONLINE' || data.paymentMethod === 'PARTIAL';
       const user = await this.userRepo.findOneBy({ id: userId });
-      if (completedOrder && user && !isOnlinePayment) {
+      if (completedOrder && user && !isOnlinePaymentForEmail) {
         const tpl = orderConfirmationEmail({
           firstName: user.firstName,
           orderId: completedOrder.id,
@@ -334,6 +355,9 @@ export class OrdersService {
     if (!order) throw AppError.notFound('Order');
     if (order.status !== OrderStatus.PENDING) {
       throw AppError.badRequest('Only pending orders can be cancelled this way');
+    }
+    if (order.isPartialPayment && Number(order.amountPaid) > 0) {
+      throw AppError.badRequest('Cannot cancel — a deposit has already been received. Please contact support.');
     }
 
     const queryRunner = AppDataSource.createQueryRunner();

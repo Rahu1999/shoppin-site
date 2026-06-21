@@ -24,7 +24,7 @@ export const checkoutSchema = z.object({
   }).optional(),
   couponCode: z.string().optional(),
   notes: z.string().optional(),
-  paymentMethod: z.enum(['COD', 'ONLINE']).default('COD'),
+  paymentMethod: z.enum(['COD', 'ONLINE', 'PARTIAL']).default('COD'),
 }).refine(data => {
   return data.shippingAddressId || data.shippingAddress;
 }, {
@@ -33,6 +33,6 @@ export const checkoutSchema = z.object({
 });
 
 export const updateOrderStatusSchema = z.object({
-  status: z.enum(['pending', 'processing', 'shipped', 'delivered', 'cancelled', 'refunded']),
+  status: z.enum(['pending', 'partially_paid', 'processing', 'shipped', 'delivered', 'cancelled', 'refunded']),
   notes: z.string().optional(),
 });

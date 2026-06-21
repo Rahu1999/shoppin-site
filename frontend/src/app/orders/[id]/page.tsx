@@ -2,22 +2,26 @@
 
 import { useParams, useRouter } from 'next/navigation';
 import { useEffect } from 'react';
-import { useQuery } from '@tanstack/react-query';
-import { apiGet } from '@/services/apiClient';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { apiGet, apiPost } from '@/services/apiClient';
 import { useAuthStore } from '@/store/authStore';
-import { Package, MapPin, CreditCard, ChevronLeft, CheckCircle2, AlertCircle, Clock, Truck, Loader2, Phone } from 'lucide-react';
+import { Package, MapPin, CreditCard, ChevronLeft, CheckCircle2, AlertCircle, Clock, Truck, Loader2, Phone, Banknote } from 'lucide-react';
 import Link from 'next/link';
 import Image from 'next/image';
 import { formatPrice } from '@/utils/price';
+import { loadRazorpayScript } from '@/utils/loadRazorpay';
+import { toast } from 'sonner';
+import { Button } from '@/components/ui/Button';
 
 const STATUS_STEPS = [
-  { key: 'pending',    label: 'Order Placed',  icon: Clock },
-  { key: 'processing', label: 'Processing',    icon: Package },
-  { key: 'shipped',    label: 'Shipped',        icon: Truck },
-  { key: 'delivered',  label: 'Delivered',      icon: CheckCircle2 },
+  { key: 'pending',        label: 'Order Placed',  icon: Clock },
+  { key: 'partially_paid', label: 'Deposit Paid',  icon: Banknote },
+  { key: 'processing',     label: 'Processing',    icon: Package },
+  { key: 'shipped',        label: 'Shipped',        icon: Truck },
+  { key: 'delivered',      label: 'Delivered',      icon: CheckCircle2 },
 ];
 
-const STATUS_ORDER = ['pending', 'processing', 'shipped', 'delivered'];
+const STATUS_ORDER = ['pending', 'partially_paid', 'processing', 'shipped', 'delivered'];
 
 function StatusTimeline({ status }: { status: string }) {
   const s = status?.toLowerCase();
@@ -44,7 +48,9 @@ function StatusTimeline({ status }: { status: string }) {
           <div key={step.key} className="flex items-center flex-1 min-w-0">
             <div className="flex flex-col items-center gap-2 shrink-0">
               <div className={`h-10 w-10 rounded-full flex items-center justify-center border-2 transition-all ${
-                active
+                active && step.key === 'partially_paid'
+                  ? 'bg-indigo-600 border-indigo-600 text-white shadow-lg shadow-indigo-500/30 scale-110'
+                  : active
                   ? 'bg-primary border-primary text-white shadow-lg shadow-primary/30 scale-110'
                   : done
                   ? 'bg-primary/10 border-primary text-primary'
@@ -53,7 +59,7 @@ function StatusTimeline({ status }: { status: string }) {
                 <Icon className="h-4 w-4" />
               </div>
               <span className={`text-[10px] font-bold uppercase tracking-wider text-center leading-tight max-w-[60px] ${
-                done ? 'text-primary' : 'text-slate-400'
+                done ? (step.key === 'partially_paid' && active ? 'text-indigo-600' : 'text-primary') : 'text-slate-400'
               }`}>
                 {step.label}
               </span>
@@ -80,6 +86,8 @@ function getStatusBadge(status: string) {
       return <span className="inline-flex items-center gap-2 px-4 py-2 rounded-full text-sm font-black bg-slate-100 text-slate-600 border border-slate-200 uppercase tracking-widest"><AlertCircle className="w-4 h-4" /> Refunded</span>;
     case 'pending':
       return <span className="inline-flex items-center gap-2 px-4 py-2 rounded-full text-sm font-black bg-yellow-100 text-yellow-700 border border-yellow-200 uppercase tracking-widest"><Clock className="w-4 h-4" /> Pending</span>;
+    case 'partially_paid':
+      return <span className="inline-flex items-center gap-2 px-4 py-2 rounded-full text-sm font-black bg-indigo-100 text-indigo-700 border border-indigo-200 uppercase tracking-widest"><Banknote className="w-4 h-4" /> Deposit Paid</span>;
     default:
       return <span className="inline-flex items-center gap-2 px-4 py-2 rounded-full text-sm font-black bg-amber-100 text-amber-700 border border-amber-200 uppercase tracking-widest"><Clock className="w-4 h-4" /> Processing</span>;
   }
@@ -89,11 +97,65 @@ export default function OrderDetailPage() {
   const params = useParams();
   const orderId = params.id as string;
   const router = useRouter();
-  const isAuthenticated = useAuthStore((state) => state.isAuthenticated);
+  const { isAuthenticated, user } = useAuthStore();
+  const queryClient = useQueryClient();
 
   const { data: order, isLoading, isError } = useQuery({
     queryKey: ['order', orderId],
     queryFn: () => apiGet<any>(`/orders/${orderId}`),
+  });
+
+  const payBalance = useMutation({
+    mutationFn: async () => {
+      const loaded = await loadRazorpayScript();
+      if (!loaded) throw new Error('Could not load the payment gateway. Please check your internet connection.');
+
+      const gwOrderData: any = await apiPost('/payments/create-order', { orderId });
+
+      if (gwOrderData.gatewaySlug !== 'razorpay') {
+        throw new Error(`Payment gateway "${gwOrderData.gatewaySlug}" is not yet supported in the browser.`);
+      }
+
+      const rzpResponse = await new Promise<any>((resolve, reject) => {
+        const options = {
+          key: gwOrderData.key,
+          amount: gwOrderData.amount,
+          currency: gwOrderData.currency,
+          name: 'Rajesh Industries',
+          description: `Balance Payment — Order #${orderId.slice(0, 8).toUpperCase()}`,
+          order_id: gwOrderData.gatewayOrderId,
+          prefill: {
+            name: user ? `${(user as any).firstName ?? ''} ${(user as any).lastName ?? ''}`.trim() : '',
+            email: (user as any)?.email ?? '',
+          },
+          theme: { color: '#4f46e5' },
+          handler: (response: any) => resolve(response),
+          modal: { ondismiss: () => reject(new Error('Payment cancelled')) },
+        };
+        const rzp = new (window as any).Razorpay(options);
+        rzp.open();
+      });
+
+      await apiPost('/payments/verify', {
+        orderId,
+        gatewaySlug: gwOrderData.gatewaySlug,
+        gatewayOrderId: gwOrderData.gatewayOrderId,
+        razorpay_order_id: rzpResponse.razorpay_order_id,
+        razorpay_payment_id: rzpResponse.razorpay_payment_id,
+        razorpay_signature: rzpResponse.razorpay_signature,
+      });
+    },
+    onSuccess: () => {
+      toast.success('Balance paid! Your order is now being processed.');
+      queryClient.invalidateQueries({ queryKey: ['order', orderId] });
+    },
+    onError: (err: any) => {
+      if (err?.message === 'Payment cancelled') {
+        toast.info('Balance payment was cancelled.');
+        return;
+      }
+      toast.error(err?.response?.data?.message || 'Payment failed. Please try again.');
+    },
   });
 
   useEffect(() => {
@@ -125,6 +187,10 @@ export default function OrderDetailPage() {
 
   const orderTotal = Number(order.total ?? order.totalAmount ?? 0);
   const payment = order.payments?.[0];
+  const isPartiallyPaid = order.status === 'partially_paid';
+  const balanceDue = order.isPartialPayment
+    ? Math.round((Number(order.total) - Number(order.amountPaid)) * 100) / 100
+    : 0;
 
   return (
     <div className="bg-surface min-h-[85vh] pt-12 pb-24">
@@ -155,6 +221,42 @@ export default function OrderDetailPage() {
           <h2 className="font-black text-slate-900 mb-6">Order Progress</h2>
           <StatusTimeline status={order.status} />
         </div>
+
+        {/* Balance Due Card — shown only for partially paid orders */}
+        {order.isPartialPayment && isPartiallyPaid && (
+          <div className="bg-indigo-50 border border-indigo-200 rounded-3xl p-6 sm:p-8 mb-6">
+            <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+              <div>
+                <h2 className="font-black text-indigo-900 text-xl mb-1">Balance Due</h2>
+                <p className="text-indigo-700 text-sm font-medium">
+                  Deposit of {formatPrice(Number(order.amountPaid))} received. Pay the remaining balance to proceed to dispatch.
+                </p>
+                <div className="mt-3 space-y-1">
+                  <div className="flex justify-between max-w-xs">
+                    <span className="text-sm text-indigo-600 font-medium">Order Total</span>
+                    <span className="font-bold text-indigo-900">{formatPrice(Number(order.total))}</span>
+                  </div>
+                  <div className="flex justify-between max-w-xs">
+                    <span className="text-sm text-indigo-600 font-medium">Deposit Paid</span>
+                    <span className="font-bold text-green-700">−{formatPrice(Number(order.amountPaid))}</span>
+                  </div>
+                  <div className="flex justify-between max-w-xs border-t border-indigo-200 pt-1 mt-1">
+                    <span className="text-sm font-black text-indigo-900">Balance Due</span>
+                    <span className="font-black text-indigo-900 text-lg">{formatPrice(balanceDue)}</span>
+                  </div>
+                </div>
+              </div>
+              <Button
+                onClick={() => payBalance.mutate()}
+                disabled={payBalance.isPending}
+                className="shrink-0 h-14 px-8 rounded-2xl font-bold text-lg bg-indigo-600 hover:bg-indigo-700 text-white shadow-lg shadow-indigo-500/30"
+              >
+                {payBalance.isPending && <Loader2 className="h-5 w-5 animate-spin mr-2" />}
+                Pay Balance
+              </Button>
+            </div>
+          </div>
+        )}
 
         {/* Info Cards */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
@@ -200,6 +302,25 @@ export default function OrderDetailPage() {
                 }`}>
                   {payment.status}
                 </span>
+                {order.isPartialPayment && (
+                  <div className="bg-indigo-50 border border-indigo-100 rounded-xl p-3 mt-2 space-y-1 text-xs">
+                    <p className="font-bold text-indigo-800 uppercase tracking-widest mb-1">Partial Payment</p>
+                    <div className="flex justify-between">
+                      <span className="text-slate-500">Deposit</span>
+                      <span className="font-bold text-slate-900">{formatPrice(Number(order.depositAmount))}</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="text-slate-500">Paid So Far</span>
+                      <span className="font-bold text-emerald-600">{formatPrice(Number(order.amountPaid))}</span>
+                    </div>
+                    {balanceDue > 0 && (
+                      <div className="flex justify-between">
+                        <span className="text-slate-500">Balance Due</span>
+                        <span className="font-bold text-indigo-700">{formatPrice(balanceDue)}</span>
+                      </div>
+                    )}
+                  </div>
+                )}
               </div>
             ) : (
               <p className="text-sm text-slate-400">No payment on record</p>
@@ -309,9 +430,17 @@ export default function OrderDetailPage() {
                 </div>
               )}
               <div className="flex justify-between items-center pt-4 border-t border-slate-200">
-                <span className="font-black text-slate-900 text-base">Total Paid</span>
+                <span className="font-black text-slate-900 text-base">
+                  {order.isPartialPayment && isPartiallyPaid ? 'Order Total' : 'Total Paid'}
+                </span>
                 <span className="font-black text-primary text-3xl tracking-tight">{formatPrice(orderTotal)}</span>
               </div>
+              {order.isPartialPayment && (
+                <div className="flex justify-between items-center">
+                  <span className="text-slate-500 font-medium text-sm">Paid So Far</span>
+                  <span className="font-bold text-emerald-600">{formatPrice(Number(order.amountPaid))}</span>
+                </div>
+              )}
             </div>
           </div>
         </div>

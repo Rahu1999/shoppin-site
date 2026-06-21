@@ -39,6 +39,28 @@ export class PaymentsController {
     }
   };
 
+  public createOrder = async (req: Request, res: Response, next: NextFunction) => {
+    try {
+      const result = await this.paymentsService.createOrder(
+        req.body.orderId,
+        req.user!.sub,
+        req.body.gatewaySlug,
+      );
+      return createdResponse(res, result, 'Payment order created');
+    } catch (error) {
+      next(error);
+    }
+  };
+
+  public verifyPayment = async (req: Request, res: Response, next: NextFunction) => {
+    try {
+      const payment = await this.paymentsService.verifyPayment(req.body, req.user!.sub);
+      return successResponse(res, payment, 'Payment verified successfully');
+    } catch (error) {
+      next(error);
+    }
+  };
+
   public getPayments = async (req: Request, res: Response, next: NextFunction) => {
     try {
       const payments = await this.paymentsService.getOrderPayments(

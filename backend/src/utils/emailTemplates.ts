@@ -176,6 +176,117 @@ export function orderConfirmationEmail(opts: {
   };
 }
 
+// ── Partial Payment Deposit Confirmation Email ─────────────────────────────
+export function partialPaymentDepositEmail(opts: {
+  firstName: string;
+  orderId: string;
+  items: Array<{ name: string; quantity: number; price: number }>;
+  subtotal: number;
+  shippingFee: number;
+  shippingMethodName?: string;
+  tax: number;
+  taxRate: number;
+  total: number;
+  depositAmount: number;
+  balanceDue: number;
+  shippingAddress: Record<string, string>;
+}): { subject: string; html: string } {
+  const { firstName, orderId, items, subtotal, shippingFee, shippingMethodName, tax, taxRate, total, depositAmount, balanceDue, shippingAddress } = opts;
+  const shortId = orderId.slice(0, 8).toUpperCase();
+
+  const itemRows = items.map(i => `
+    <tr>
+      <td style="padding:12px 0;border-bottom:1px solid #f0f0f0;color:#333;font-size:14px;">${i.name}</td>
+      <td style="padding:12px 0;border-bottom:1px solid #f0f0f0;color:#555;font-size:14px;text-align:center;">×${i.quantity}</td>
+      <td style="padding:12px 0;border-bottom:1px solid #f0f0f0;color:#333;font-size:14px;text-align:right;font-weight:700;">₹${(Number(i.price) * i.quantity).toFixed(2)}</td>
+    </tr>
+  `).join('');
+
+  const address = shippingAddress;
+
+  return {
+    subject: `Deposit Received — Order #${shortId} Confirmed | Rajesh Industries`,
+    html: baseLayout('Deposit Received', `
+      <div style="background:#eff6ff;border:1px solid #bfdbfe;border-radius:8px;padding:16px 20px;margin-bottom:28px;display:flex;align-items:center;gap:12px;">
+        <span style="font-size:24px;">💰</span>
+        <div>
+          <p style="margin:0;font-weight:900;color:#1e40af;font-size:16px;">Deposit Received — Order Confirmed!</p>
+          <p style="margin:4px 0 0;color:#1e40af;font-size:13px;">Order #${shortId}</p>
+        </div>
+      </div>
+
+      <p style="color:#555;font-size:15px;line-height:1.6;margin:0 0 16px;">
+        Hi <strong>${firstName}</strong>, your deposit of <strong>₹${Number(depositAmount).toFixed(2)}</strong> has been received and your order is confirmed.
+        The remaining balance of <strong>₹${Number(balanceDue).toFixed(2)}</strong> is due before dispatch.
+      </p>
+
+      <div style="background:#fef9c3;border:1px solid #fde047;border-radius:8px;padding:14px 18px;margin-bottom:24px;">
+        <p style="margin:0;color:#854d0e;font-size:13px;font-weight:700;">⚠️ Balance Due: ₹${Number(balanceDue).toFixed(2)}</p>
+        <p style="margin:4px 0 0;color:#92400e;font-size:13px;">Click the button below to pay your balance and proceed to dispatch.</p>
+      </div>
+
+      <!-- Items Table -->
+      <table width="100%" cellpadding="0" cellspacing="0" style="margin-bottom:20px;">
+        <thead>
+          <tr style="background:#f8f8f8;">
+            <th style="padding:10px 0;text-align:left;font-size:12px;color:#888;font-weight:700;letter-spacing:1px;text-transform:uppercase;">Item</th>
+            <th style="padding:10px 0;text-align:center;font-size:12px;color:#888;font-weight:700;letter-spacing:1px;text-transform:uppercase;">Qty</th>
+            <th style="padding:10px 0;text-align:right;font-size:12px;color:#888;font-weight:700;letter-spacing:1px;text-transform:uppercase;">Price</th>
+          </tr>
+        </thead>
+        <tbody>${itemRows}</tbody>
+        <tfoot>
+          <tr>
+            <td colspan="2" style="padding:16px 0 4px;font-size:13px;color:#888;">Subtotal</td>
+            <td style="padding:16px 0 4px;text-align:right;font-size:13px;color:#333;font-weight:700;">₹${Number(subtotal).toFixed(2)}</td>
+          </tr>
+          <tr>
+            <td colspan="2" style="padding:4px 0;font-size:13px;color:#888;">${shippingMethodName || 'Shipping'}</td>
+            <td style="padding:4px 0;text-align:right;font-size:13px;color:${shippingFee > 0 ? '#333' : '#16a34a'};font-weight:700;">${shippingFee > 0 ? `₹${Number(shippingFee).toFixed(2)}` : 'Free'}</td>
+          </tr>
+          ${tax > 0 ? `<tr>
+            <td colspan="2" style="padding:4px 0;font-size:13px;color:#888;">GST (${Number(taxRate).toFixed(0)}%)</td>
+            <td style="padding:4px 0;text-align:right;font-size:13px;color:#333;font-weight:700;">₹${Number(tax).toFixed(2)}</td>
+          </tr>` : ''}
+          <tr>
+            <td colspan="2" style="padding:8px 0 4px;font-size:15px;font-weight:900;color:#1a1a2e;">Order Total</td>
+            <td style="padding:8px 0 4px;text-align:right;font-size:17px;font-weight:900;color:#1a1a2e;">₹${Number(total).toFixed(2)}</td>
+          </tr>
+          <tr>
+            <td colspan="2" style="padding:4px 0;font-size:13px;color:#16a34a;font-weight:700;">✅ Deposit Paid</td>
+            <td style="padding:4px 0;text-align:right;font-size:13px;color:#16a34a;font-weight:700;">−₹${Number(depositAmount).toFixed(2)}</td>
+          </tr>
+          <tr>
+            <td colspan="2" style="padding:8px 0;font-size:16px;font-weight:900;color:#1e40af;">Balance Due</td>
+            <td style="padding:8px 0;text-align:right;font-size:20px;font-weight:900;color:#1e40af;">₹${Number(balanceDue).toFixed(2)}</td>
+          </tr>
+        </tfoot>
+      </table>
+
+      ${divider()}
+
+      <!-- Address -->
+      <p style="margin:0 0 8px;font-weight:900;color:${BRAND_COLOR};font-size:13px;text-transform:uppercase;letter-spacing:1px;">📦 Delivery Address</p>
+      <p style="margin:0 0 24px;color:#555;font-size:13px;line-height:1.8;">
+        ${address.fullName || ''}<br/>
+        ${address.line1 || ''}<br/>
+        ${address.city || ''}, ${address.state || ''} ${address.postalCode || ''}<br/>
+        ${address.country || ''}
+        ${address.phone ? `<br/>📞 ${address.phone}` : ''}
+      </p>
+
+      <div style="text-align:center;margin-bottom:24px;">
+        ${btn('Pay Balance Now', `${FRONTEND_URL}/orders/${orderId}`)}
+      </div>
+
+      ${divider()}
+      <p style="color:#888;font-size:13px;margin:0;">
+        Need help? WhatsApp us at <a href="https://wa.me/919870212660" style="color:${ACCENT_COLOR};">+91 98702 12660</a> or email <a href="mailto:rajeshindustries29@gmail.com" style="color:${ACCENT_COLOR};">rajeshindustries29@gmail.com</a>.
+      </p>
+    `),
+  };
+}
+
 // ── Order Status Update Email ───────────────────────────────────────────────
 const STATUS_INFO: Record<string, { emoji: string; title: string; message: string; color: string }> = {
   processing: {
@@ -195,6 +306,12 @@ const STATUS_INFO: Record<string, { emoji: string; title: string; message: strin
     title: 'Your order has been delivered!',
     message: 'We hope you love your new steel kitchen products. Enjoy cooking smarter!',
     color: '#22c55e',
+  },
+  partially_paid: {
+    emoji: '💳',
+    title: 'Deposit received — balance due before dispatch',
+    message: 'Your deposit has been received and your order is confirmed. Please pay the remaining balance from your order details page so we can dispatch your items.',
+    color: '#4f46e5',
   },
   cancelled: {
     emoji: '❌',

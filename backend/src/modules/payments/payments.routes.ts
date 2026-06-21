@@ -2,12 +2,16 @@ import { Router } from 'express';
 import { PaymentsController } from './payments.controller';
 import { validate } from '@middleware/validate.middleware';
 import { authMiddleware } from '@middleware/auth.middleware';
-import { processPaymentSchema, createRazorpayOrderSchema, verifyRazorpayPaymentSchema } from './payments.validator';
+import { processPaymentSchema, createRazorpayOrderSchema, verifyRazorpayPaymentSchema, createOrderSchema, verifyPaymentSchema } from './payments.validator';
 
 const router = Router({ mergeParams: true });
 const controller = new PaymentsController();
 
-// Razorpay routes — must be declared before /:orderId routes to avoid param collision
+// Generic multi-gateway endpoints
+router.post('/create-order', authMiddleware, validate(createOrderSchema), controller.createOrder);
+router.post('/verify', authMiddleware, validate(verifyPaymentSchema), controller.verifyPayment);
+
+// Razorpay-specific routes (backward compat — delegate to generic methods internally)
 router.post('/razorpay/create-order', authMiddleware, validate(createRazorpayOrderSchema), controller.createRazorpayOrder);
 router.post('/razorpay/verify', authMiddleware, validate(verifyRazorpayPaymentSchema), controller.verifyRazorpayPayment);
 

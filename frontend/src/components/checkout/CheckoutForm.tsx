@@ -13,11 +13,13 @@ import { calculateShipping } from '@/utils/shipping';
 import { loadRazorpayScript } from '@/utils/loadRazorpay';
 import { usePaymentGatewayConfig } from '@/hooks/usePaymentGatewayConfig';
 import { calculateGatewayFee, gatewayFeeLabel } from '@/utils/gatewayFee';
+import { usePartialPaymentConfig } from '@/hooks/usePartialPaymentConfig';
+import { calculateDeposit, calculateBalance, isPartialPaymentEligible } from '@/utils/partialPayment';
 import { useMutation, useQuery } from '@tanstack/react-query';
 import { useRouter } from 'next/navigation';
 import {
   CheckCircle2, MapPin, Navigation, Plus, Banknote,
-  CreditCard, ChevronDown, ChevronUp, Loader2,
+  CreditCard, ChevronDown, ChevronUp, Loader2, Layers,
 } from 'lucide-react';
 import { useAuthStore } from '@/store/authStore';
 import { getAddresses, addAddress, Address } from '@/services/userService';
@@ -36,7 +38,12 @@ const INDIAN_STATES = [
 const FIELD = 'h-12 bg-white rounded-xl border-slate-200 text-sm';
 const SELECT = 'w-full h-12 px-3 rounded-xl border border-slate-200 bg-white text-sm text-slate-800 focus:outline-none focus:ring-2 focus:ring-primary/30 transition-all';
 
-export function CheckoutForm() {
+interface CheckoutFormProps {
+  paymentMethod: 'COD' | 'ONLINE' | 'PARTIAL';
+  setPaymentMethod: (m: 'COD' | 'ONLINE' | 'PARTIAL') => void;
+}
+
+export function CheckoutForm({ paymentMethod, setPaymentMethod }: CheckoutFormProps) {
   const { items, total, appliedCoupon, clearCoupon, clear } = useCartStore();
   const { user, isAuthenticated } = useAuthStore();
   const router = useRouter();
@@ -45,6 +52,7 @@ export function CheckoutForm() {
   const gstRate = taxConfig?.rate ?? 12;
   const { data: shippingConfig } = useShippingConfig();
   const { data: gatewayConfig } = usePaymentGatewayConfig();
+  const { data: partialConfig } = usePartialPaymentConfig();
   const couponDiscount = appliedCoupon?.discount ?? 0;
   const postDiscountTotal = Math.max(0, total - couponDiscount);
   const shippingFeeEstimate = shippingConfig ? calculateShipping(postDiscountTotal, shippingConfig) : 99;
@@ -60,11 +68,11 @@ export function CheckoutForm() {
     discount: number;
     total: number;
     method: string;
+    depositAmount?: number;
   } | null>(null);
   const [selectedAddressId, setSelectedAddressId] = useState<string | null>(null);
   const [showNewForm, setShowNewForm] = useState(false);
   const [saveToAccount, setSaveToAccount] = useState(true);
-  const [paymentMethod, setPaymentMethod] = useState<'COD' | 'ONLINE'>('ONLINE');
   // Tracks the order ID created before the Razorpay modal opens so we can
   // cancel it if the user dismisses without paying.
   const pendingOnlineOrderId = useRef<string | null>(null);
@@ -168,8 +176,12 @@ export function CheckoutForm() {
       // Track this order so we can cancel it if the user closes the modal
       pendingOnlineOrderId.current = orderId;
 
-      // Step 2: Create Razorpay order on our backend (returns key + rzp order_id)
-      const rzpOrderData: any = await apiPost('/payments/razorpay/create-order', { orderId });
+      // Step 2: Create payment order on our backend (returns key + gateway order id)
+      const gwOrderData: any = await apiPost('/payments/create-order', { orderId });
+
+      if (gwOrderData.gatewaySlug !== 'razorpay') {
+        throw new Error(`Payment gateway "${gwOrderData.gatewaySlug}" is not yet supported in the browser. Please contact support.`);
+      }
 
       // Step 3: Open Razorpay popup — wrap callback in a Promise so we can await it
       const selectedAddr = !showNewForm && selectedAddressId
@@ -179,12 +191,12 @@ export function CheckoutForm() {
 
       const rzpResponse = await new Promise<RazorpayResponse>((resolve, reject) => {
         const options: RazorpayOptions = {
-          key: rzpOrderData.key,
-          amount: rzpOrderData.amount,       // already in paise from backend
-          currency: rzpOrderData.currency,
+          key: gwOrderData.key,
+          amount: gwOrderData.amount,
+          currency: gwOrderData.currency,
           name: 'Rajesh Industries',
           description: `Order #${orderId.slice(0, 8).toUpperCase()}`,
-          order_id: rzpOrderData.razorpayOrderId,
+          order_id: gwOrderData.gatewayOrderId,
           prefill: {
             name: user ? `${user.firstName ?? ''} ${user.lastName ?? ''}`.trim() : '',
             email: (user as any)?.email ?? '',
@@ -201,9 +213,13 @@ export function CheckoutForm() {
       });
 
       // Step 4: Verify payment signature on our backend
-      await apiPost('/payments/razorpay/verify', {
-        ...rzpResponse,
+      await apiPost('/payments/verify', {
         orderId,
+        gatewaySlug: gwOrderData.gatewaySlug,
+        gatewayOrderId: gwOrderData.gatewayOrderId,
+        razorpay_order_id: rzpResponse.razorpay_order_id,
+        razorpay_payment_id: rzpResponse.razorpay_payment_id,
+        razorpay_signature: rzpResponse.razorpay_signature,
       });
 
       return res;
@@ -221,6 +237,7 @@ export function CheckoutForm() {
         discount: Number(res.discount ?? 0),
         total: Number(res.total ?? res.totalAmount ?? total),
         method: paymentMethod,
+        depositAmount: paymentMethod === 'PARTIAL' ? Number(res.depositAmount) : undefined,
       });
       clearCoupon();
       clear();
@@ -265,7 +282,9 @@ export function CheckoutForm() {
             <CheckCircle2 className="h-10 w-10 text-green-500" />
           </div>
           <h2 className="text-2xl font-black tracking-tight text-slate-900 mb-1">
-            {confirmedData.method === 'COD' ? 'Order Placed!' : 'Payment Successful!'}
+            {confirmedData.method === 'COD' ? 'Order Placed!'
+              : confirmedData.method === 'PARTIAL' ? 'Deposit Received!'
+              : 'Payment Successful!'}
           </h2>
           <p className="text-slate-500 text-sm font-medium">
             Order <span className="font-bold text-slate-700">#{confirmedData.orderId.slice(0, 8).toUpperCase()}</span>
@@ -295,14 +314,35 @@ export function CheckoutForm() {
               <span className="font-bold text-slate-900">{formatPrice(confirmedData.tax)}</span>
             </div>
           )}
-          <div className="flex justify-between items-center pt-3 border-t border-slate-100">
-            <span className="font-bold text-slate-900">Total {confirmedData.method === 'COD' ? 'Payable' : 'Paid'}</span>
-            <span className="text-2xl font-black text-primary tracking-tight">{formatPrice(confirmedData.total)}</span>
-          </div>
+          {confirmedData.method === 'PARTIAL' ? (
+            <>
+              <div className="flex justify-between items-center pt-3 border-t border-slate-100">
+                <span className="font-bold text-slate-900">Order Total</span>
+                <span className="text-xl font-black text-slate-700 tracking-tight">{formatPrice(confirmedData.total)}</span>
+              </div>
+              <div className="flex justify-between items-center text-sm">
+                <span className="text-emerald-600 font-medium">Deposit Paid Now</span>
+                <span className="font-black text-emerald-600 text-lg">{formatPrice(confirmedData.depositAmount ?? 0)}</span>
+              </div>
+              <div className="flex justify-between items-center text-sm">
+                <span className="text-indigo-600 font-medium">Balance Due Before Dispatch</span>
+                <span className="font-bold text-indigo-600">
+                  {formatPrice(confirmedData.total - (confirmedData.depositAmount ?? 0))}
+                </span>
+              </div>
+            </>
+          ) : (
+            <div className="flex justify-between items-center pt-3 border-t border-slate-100">
+              <span className="font-bold text-slate-900">Total {confirmedData.method === 'COD' ? 'Payable' : 'Paid'}</span>
+              <span className="text-2xl font-black text-primary tracking-tight">{formatPrice(confirmedData.total)}</span>
+            </div>
+          )}
           <div className="flex justify-between items-center text-sm">
             <span className="text-slate-500 font-medium">Payment</span>
             <span className="font-bold text-slate-700">
-              {confirmedData.method === 'COD' ? 'Cash on Delivery' : 'Paid Online (Razorpay)'}
+              {confirmedData.method === 'COD' ? 'Cash on Delivery'
+                : confirmedData.method === 'PARTIAL' ? 'Partial Payment (Deposit + Balance)'
+                : 'Paid Online (Razorpay)'}
             </span>
           </div>
         </div>
@@ -311,6 +351,8 @@ export function CheckoutForm() {
           <p className="text-sm text-slate-500 mb-5 text-center">
             {confirmedData.method === 'COD'
               ? "We'll notify you when your order is shipped. Pay in cash on delivery."
+              : confirmedData.method === 'PARTIAL'
+              ? "Deposit received! Pay the balance from your order details page before dispatch."
               : "Payment confirmed! We'll notify you when your order is shipped."}
           </p>
           <div className="flex flex-col sm:flex-row gap-3">
@@ -333,15 +375,23 @@ export function CheckoutForm() {
   const canPlaceOrder = showNewForm ? newFormFilled : !!selectedAddressId;
 
   const preGatewayTotal = postDiscountTotal + shippingFeeEstimate + calculateGST(postDiscountTotal, gstRate);
-  const gatewayFeeEstimate = paymentMethod === 'ONLINE' && gatewayConfig
+  const gatewayFeeEstimate = (paymentMethod === 'ONLINE' || paymentMethod === 'PARTIAL') && gatewayConfig
     ? calculateGatewayFee(preGatewayTotal, gatewayConfig)
     : 0;
   const orderTotal = preGatewayTotal + gatewayFeeEstimate;
+
+  const isPartialEligible = partialConfig ? isPartialPaymentEligible(preGatewayTotal, partialConfig) : false;
+  const depositEstimate = paymentMethod === 'PARTIAL' && partialConfig
+    ? calculateDeposit(orderTotal, partialConfig)
+    : 0;
+  const balanceEstimate = paymentMethod === 'PARTIAL' ? calculateBalance(orderTotal, depositEstimate) : 0;
 
   const buttonLabel = placeOrder.isPending
     ? (paymentMethod === 'COD' ? 'Placing your order...' : 'Opening payment...')
     : (paymentMethod === 'COD'
         ? `Place Order · ${formatPrice(orderTotal)}`
+        : paymentMethod === 'PARTIAL'
+        ? `Pay Deposit · ${formatPrice(depositEstimate)}`
         : `Pay Online · ${formatPrice(orderTotal)}`);
 
   // ── Main checkout ───────────────────────────────────────────────────────────
@@ -599,6 +649,50 @@ export function CheckoutForm() {
                   <span className="text-xs font-bold text-amber-800">+{formatPrice(gatewayFeeEstimate)}</span>
                 </div>
               )}
+            </div>
+          )}
+
+          {/* Partial Payment (Deposit + Balance) */}
+          {isPartialEligible && partialConfig && (
+            <label
+              onClick={() => setPaymentMethod('PARTIAL')}
+              className={`flex items-center gap-4 p-4 border-2 rounded-2xl cursor-pointer transition-all ${
+                paymentMethod === 'PARTIAL'
+                  ? 'border-indigo-500 bg-indigo-50 shadow-sm'
+                  : 'border-slate-100 hover:border-slate-300'
+              }`}
+            >
+              <div className={`h-5 w-5 rounded-full border-2 flex items-center justify-center shrink-0 ${
+                paymentMethod === 'PARTIAL' ? 'border-indigo-500' : 'border-slate-300'
+              }`}>
+                {paymentMethod === 'PARTIAL' && <div className="w-2.5 h-2.5 bg-indigo-500 rounded-full" />}
+              </div>
+              <Layers className={`h-6 w-6 shrink-0 ${paymentMethod === 'PARTIAL' ? 'text-indigo-600' : 'text-slate-400'}`} />
+              <div className="flex-1">
+                <p className="font-bold text-slate-900">{partialConfig.label}</p>
+                <p className="text-xs text-slate-500 mt-0.5">
+                  Pay {formatPrice(depositEstimate || calculateDeposit(orderTotal, partialConfig))} now,{' '}
+                  {formatPrice(calculateBalance(orderTotal, depositEstimate || calculateDeposit(orderTotal, partialConfig)))} before dispatch.
+                </p>
+              </div>
+            </label>
+          )}
+
+          {paymentMethod === 'PARTIAL' && (
+            <div className="space-y-2 px-1">
+              <div className="bg-indigo-50 border border-indigo-100 rounded-xl px-3 py-3 space-y-1.5">
+                <div className="flex justify-between text-sm">
+                  <span className="font-medium text-indigo-700">Pay Now (Deposit)</span>
+                  <span className="font-bold text-indigo-800">{formatPrice(depositEstimate)}</span>
+                </div>
+                <div className="flex justify-between text-sm">
+                  <span className="font-medium text-slate-500">Balance Due Before Dispatch</span>
+                  <span className="font-bold text-slate-700">{formatPrice(balanceEstimate)}</span>
+                </div>
+              </div>
+              <p className="text-xs text-slate-400 leading-relaxed">
+                Pay the deposit now to confirm your order. The remaining balance is due before we dispatch your items.
+              </p>
             </div>
           )}
         </div>

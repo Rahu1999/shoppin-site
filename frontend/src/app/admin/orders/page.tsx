@@ -102,13 +102,14 @@ export default function AdminOrdersPage() {
                     </td>
                     <td className="px-6 py-4">
                       <span className={`px-2.5 py-1 rounded-full text-xs font-bold uppercase ${
-                        order.status === 'delivered'  ? 'bg-green-100 text-green-700'  :
-                        order.status === 'shipped'    ? 'bg-blue-100 text-blue-700'    :
-                        order.status === 'cancelled'  ? 'bg-red-100 text-red-700'      :
-                        order.status === 'pending'    ? 'bg-yellow-100 text-yellow-700':
+                        order.status === 'delivered'      ? 'bg-green-100 text-green-700'   :
+                        order.status === 'shipped'        ? 'bg-blue-100 text-blue-700'     :
+                        order.status === 'cancelled'      ? 'bg-red-100 text-red-700'       :
+                        order.status === 'pending'        ? 'bg-yellow-100 text-yellow-700' :
+                        order.status === 'partially_paid' ? 'bg-indigo-100 text-indigo-700' :
                         'bg-orange-100 text-orange-700'
                       }`}>
-                        {order.status}
+                        {order.status === 'partially_paid' ? 'Deposit Paid' : order.status}
                       </span>
                     </td>
                     <td className="px-6 py-4 text-right">

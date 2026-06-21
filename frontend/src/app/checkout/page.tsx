@@ -14,23 +14,38 @@ import { useShippingConfig } from '@/hooks/useShippingConfig';
 import { calculateShipping } from '@/utils/shipping';
 import { usePaymentGatewayConfig } from '@/hooks/usePaymentGatewayConfig';
 import { calculateGatewayFee, gatewayFeeLabel } from '@/utils/gatewayFee';
+import { usePartialPaymentConfig } from '@/hooks/usePartialPaymentConfig';
+import { calculateDeposit, calculateBalance, isPartialPaymentEligible } from '@/utils/partialPayment';
 
 export default function CheckoutPage() {
   const { items, total, appliedCoupon } = useCartStore();
   const { isAuthenticated } = useAuthStore();
   const router = useRouter();
   const [mounted, setMounted] = useState(false);
+  const [paymentMethod, setPaymentMethod] = useState<'COD' | 'ONLINE' | 'PARTIAL'>('ONLINE');
+
   const { data: taxConfig } = useTaxConfig();
   const gstRate = taxConfig?.rate ?? 12;
   const { data: shippingConfig } = useShippingConfig();
   const { data: gatewayConfig } = usePaymentGatewayConfig();
+  const { data: partialConfig } = usePartialPaymentConfig();
 
   const couponDiscount = appliedCoupon?.discount ?? 0;
   const postDiscountTotal = Math.max(0, total - couponDiscount);
   const shippingFee = shippingConfig ? calculateShipping(postDiscountTotal, shippingConfig) : 99;
   const estimatedTax = calculateGST(postDiscountTotal, gstRate);
-  const estimatedGatewayFee = gatewayConfig
-    ? calculateGatewayFee(postDiscountTotal + shippingFee + estimatedTax, gatewayConfig)
+  const preGatewayTotal = postDiscountTotal + shippingFee + estimatedTax;
+  const estimatedGatewayFee = (paymentMethod === 'ONLINE' || paymentMethod === 'PARTIAL') && gatewayConfig
+    ? calculateGatewayFee(preGatewayTotal, gatewayConfig)
+    : 0;
+  const orderTotal = preGatewayTotal + estimatedGatewayFee;
+
+  const partialEligible = partialConfig ? isPartialPaymentEligible(preGatewayTotal, partialConfig) : false;
+  const depositForSidebar = paymentMethod === 'PARTIAL' && partialConfig
+    ? calculateDeposit(orderTotal, partialConfig)
+    : 0;
+  const balanceForSidebar = paymentMethod === 'PARTIAL'
+    ? calculateBalance(orderTotal, depositForSidebar)
     : 0;
 
   useEffect(() => { setMounted(true); }, []);
@@ -53,7 +68,7 @@ export default function CheckoutPage() {
 
         <div className={`lg:grid lg:gap-10 xl:gap-14 lg:items-start ${items.length > 0 ? 'lg:grid-cols-12' : ''}`}>
           <div className={items.length > 0 ? 'lg:col-span-7 space-y-6' : 'max-w-xl mx-auto w-full'}>
-            <CheckoutForm />
+            <CheckoutForm paymentMethod={paymentMethod} setPaymentMethod={setPaymentMethod} />
           </div>
 
           {/* Order Summary Sidebar — hidden after order is placed */}
@@ -124,10 +139,24 @@ export default function CheckoutPage() {
                     </div>
                   )}
 
+                  {paymentMethod === 'PARTIAL' && partialEligible && (
+                    <div className="border-t border-dashed border-slate-200 pt-3 space-y-1.5">
+                      <p className="text-[10px] font-bold uppercase tracking-widest text-slate-400 mb-2">Partial Payment</p>
+                      <div className="flex justify-between items-center">
+                        <span className="text-slate-600 font-medium">Pay Now (Deposit)</span>
+                        <span className="font-black text-indigo-600">{formatPrice(depositForSidebar)}</span>
+                      </div>
+                      <div className="flex justify-between items-center">
+                        <span className="text-slate-400 font-medium">Balance Due Later</span>
+                        <span className="font-bold text-slate-500">{formatPrice(balanceForSidebar)}</span>
+                      </div>
+                    </div>
+                  )}
+
                   <div className="flex justify-between items-end pt-4 border-t border-slate-100">
                     <span className="text-base font-bold text-slate-900">Total</span>
                     <div className="text-right">
-                      <span className="text-3xl font-black text-primary tracking-tight">{formatPrice(postDiscountTotal + shippingFee + estimatedTax + estimatedGatewayFee)}</span>
+                      <span className="text-3xl font-black text-primary tracking-tight">{formatPrice(orderTotal)}</span>
                     </div>
                   </div>
                </div>

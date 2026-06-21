@@ -32,3 +32,5 @@ export * from './transaction-type.enum';
 export * from './tax-config.entity';
 export * from './shipping-config.entity';
 export * from './payment-gateway-config.entity';
+export * from './partial-payment-config.entity';
+export * from './payment-gateway-provider.entity';

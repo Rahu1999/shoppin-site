@@ -56,6 +56,15 @@ export class Order extends BaseEntity {
   @Column({ nullable: true })
   notes?: string;
 
+  @Column({ name: 'is_partial_payment', default: false })
+  isPartialPayment!: boolean;
+
+  @Column({ name: 'deposit_amount', type: 'decimal', precision: 12, scale: 2, default: 0 })
+  depositAmount!: number;
+
+  @Column({ name: 'amount_paid', type: 'decimal', precision: 12, scale: 2, default: 0 })
+  amountPaid!: number;
+
   @ManyToOne(() => User, (u) => u.orders)
   @JoinColumn({ name: 'user_id' })
   user!: User;

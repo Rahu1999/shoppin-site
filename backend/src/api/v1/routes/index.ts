@@ -14,6 +14,8 @@ import couponRoutes from '@modules/coupons/coupons.routes';
 import shippingRoutes from '@modules/shipping/shipping.routes';
 import taxRoutes from '@modules/tax/tax.routes';
 import paymentGatewayRoutes from '@modules/payment-gateway/payment-gateway.routes';
+import partialPaymentRoutes from '@modules/partial-payment/partial-payment.routes';
+import gatewayProviderRoutes from '@modules/gateway-providers/gateway-providers.routes';
 
 const router = Router();
 
@@ -32,6 +34,8 @@ router.use('/coupons', couponRoutes);
 router.use('/shipping', shippingRoutes);
 router.use('/tax', taxRoutes);
 router.use('/payment-gateway', paymentGatewayRoutes);
+router.use('/partial-payment', partialPaymentRoutes);
+router.use('/gateway-providers', gatewayProviderRoutes);
 
 router.get('/health', (req, res) => {
   res.status(200).json({ success: true, message: 'API is running', timestamp: new Date() });

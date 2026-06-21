@@ -263,6 +263,21 @@ export class ProductsService {
             );
           }
         }
+
+        // When variants list is empty the product becomes a base-stock product.
+        // Update base inventory if stockQuantity was also supplied.
+        if ((variants as any[]).length === 0 && stockQuantity !== undefined) {
+          const inventoryRepo = manager.getRepository(Inventory);
+          const inventory = await inventoryRepo.findOneBy({ productId: id, variantId: IsNull() });
+          if (inventory) {
+            inventory.quantity = stockQuantity;
+            await manager.save(Inventory, inventory);
+          } else {
+            await manager.save(
+              manager.create(Inventory, { productId: id, quantity: stockQuantity, reserved: 0 })
+            );
+          }
+        }
       } else if (stockQuantity !== undefined) {
         // No-variant product — update base inventory
         const inventoryRepo = manager.getRepository(Inventory);
