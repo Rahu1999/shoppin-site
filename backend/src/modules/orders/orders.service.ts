@@ -196,8 +196,12 @@ export class OrdersService {
         await queryRunner.manager.save(usageRecord);
       }
 
-      // 6. Clear Cart
-      await queryRunner.manager.delete(Cart, { id: cart.id });
+      // 6. Clear Cart — only for COD. For online payments the cart is cleared
+      //    inside verifyRazorpayPayment after the signature is confirmed, so
+      //    the user can retry if they dismiss the modal without paying.
+      if (data.paymentMethod !== 'ONLINE') {
+        await queryRunner.manager.delete(Cart, { id: cart.id });
+      }
 
       await queryRunner.commitTransaction();
 

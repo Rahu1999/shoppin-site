@@ -4,6 +4,7 @@ import { AppDataSource } from '@config/database';
 import { Payment } from '@entities/payment.entity';
 import { PaymentTransaction } from '@entities/payment-transaction.entity';
 import { Order } from '@entities/order.entity';
+import { Cart } from '@entities/cart.entity';
 import { User } from '@entities/user.entity';
 import { AppError } from '@utils/AppError';
 import { OrderStatus } from '@entities/order-status.enum';
@@ -17,6 +18,7 @@ export class PaymentsService {
   private paymentRepo = AppDataSource.getRepository(Payment);
   private transactionRepo = AppDataSource.getRepository(PaymentTransaction);
   private orderRepo = AppDataSource.getRepository(Order);
+  private cartRepo = AppDataSource.getRepository(Cart);
   private userRepo = AppDataSource.getRepository(User);
 
   private getRazorpayInstance(): Razorpay {
@@ -183,6 +185,9 @@ export class PaymentsService {
 
     order.status = OrderStatus.PROCESSING;
     await this.orderRepo.save(order);
+
+    // Clear the user's cart now that payment is confirmed
+    await this.cartRepo.delete({ userId });
 
     // Send order confirmation email now that payment is verified (fire and forget)
     const fullOrder = await this.orderRepo.findOne({ where: { id: data.orderId }, relations: ['items'] });
