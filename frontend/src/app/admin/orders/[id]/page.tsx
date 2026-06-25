@@ -99,18 +99,18 @@ export default function AdminOrderDetailPage() {
   return (
     <div className="space-y-6 max-w-5xl">
       {/* Header */}
-      <div className="flex items-center gap-4">
+      <div className="flex flex-wrap items-start gap-3">
         <button
           onClick={() => router.back()}
-          className="flex items-center gap-1.5 text-sm font-bold text-slate-500 hover:text-primary bg-white px-4 py-2 rounded-xl shadow-sm border border-slate-100 hover:shadow-md transition-all"
+          className="flex items-center gap-1.5 text-sm font-bold text-slate-500 hover:text-primary bg-white px-3 py-2 sm:px-4 rounded-xl shadow-sm border border-slate-100 hover:shadow-md transition-all shrink-0"
         >
           <ChevronLeft className="h-4 w-4" /> Back
         </button>
-        <div className="flex-1">
-          <h1 className="text-2xl font-black text-slate-900">
+        <div className="flex-1 min-w-0">
+          <h1 className="text-xl sm:text-2xl font-black text-slate-900">
             Order #{order.id.slice(0, 8).toUpperCase()}
           </h1>
-          <p className="text-slate-500 text-sm font-medium">
+          <p className="text-slate-500 text-xs sm:text-sm font-medium">
             Placed on {new Date(order.createdAt).toLocaleDateString(undefined, { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}
           </p>
         </div>

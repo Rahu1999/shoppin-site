@@ -127,7 +127,7 @@ function CouponModal({
           </div>
 
           {/* Type + Value */}
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <div>
               <label className={LABEL}>Discount Type</label>
               <select
@@ -154,7 +154,7 @@ function CouponModal({
           </div>
 
           {/* Min order + Max cap */}
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <div>
               <label className={LABEL}>Min. Order Value (₹)</label>
               <Input
@@ -182,7 +182,7 @@ function CouponModal({
           </div>
 
           {/* Usage limits */}
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <div>
               <label className={LABEL}>Total Uses Limit</label>
               <Input
@@ -207,7 +207,7 @@ function CouponModal({
           </div>
 
           {/* Validity dates */}
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <div>
               <label className={LABEL}>Valid From</label>
               <Input
@@ -299,10 +299,10 @@ export default function AdminCouponsPage() {
     <div className="space-y-6">
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
-          <h1 className="text-3xl font-bold tracking-tight text-slate-900">Coupons</h1>
+          <h1 className="text-2xl sm:text-3xl font-bold tracking-tight text-slate-900">Coupons</h1>
           <p className="text-slate-500 text-sm mt-1">Create and manage discount codes for your customers.</p>
         </div>
-        <Button onClick={() => setModal('create')} className="gap-2 shrink-0">
+        <Button onClick={() => setModal('create')} className="gap-2 shrink-0 w-full sm:w-auto">
           <Plus className="h-4 w-4" /> Create Coupon
         </Button>
       </div>
@@ -328,13 +328,13 @@ export default function AdminCouponsPage() {
             <table className="w-full text-left text-sm whitespace-nowrap">
               <thead>
                 <tr className="border-b border-slate-100 bg-slate-50/50">
-                  <th className="px-5 py-3.5 font-bold text-slate-500 text-xs uppercase tracking-widest">Code</th>
-                  <th className="px-5 py-3.5 font-bold text-slate-500 text-xs uppercase tracking-widest">Discount</th>
-                  <th className="px-5 py-3.5 font-bold text-slate-500 text-xs uppercase tracking-widest">Min Order</th>
-                  <th className="px-5 py-3.5 font-bold text-slate-500 text-xs uppercase tracking-widest">Usage</th>
-                  <th className="px-5 py-3.5 font-bold text-slate-500 text-xs uppercase tracking-widest">Expires</th>
-                  <th className="px-5 py-3.5 font-bold text-slate-500 text-xs uppercase tracking-widest">Status</th>
-                  <th className="px-5 py-3.5 font-bold text-slate-500 text-xs uppercase tracking-widest">Actions</th>
+                  <th className="px-3 py-3 sm:px-5 sm:py-3.5 font-bold text-slate-500 text-xs uppercase tracking-widest">Code</th>
+                  <th className="px-3 py-3 sm:px-5 sm:py-3.5 font-bold text-slate-500 text-xs uppercase tracking-widest">Discount</th>
+                  <th className="px-3 py-3 sm:px-5 sm:py-3.5 font-bold text-slate-500 text-xs uppercase tracking-widest hidden sm:table-cell">Min Order</th>
+                  <th className="px-3 py-3 sm:px-5 sm:py-3.5 font-bold text-slate-500 text-xs uppercase tracking-widest hidden md:table-cell">Usage</th>
+                  <th className="px-3 py-3 sm:px-5 sm:py-3.5 font-bold text-slate-500 text-xs uppercase tracking-widest hidden lg:table-cell">Expires</th>
+                  <th className="px-3 py-3 sm:px-5 sm:py-3.5 font-bold text-slate-500 text-xs uppercase tracking-widest">Status</th>
+                  <th className="px-3 py-3 sm:px-5 sm:py-3.5 font-bold text-slate-500 text-xs uppercase tracking-widest">Actions</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100">
@@ -342,23 +342,23 @@ export default function AdminCouponsPage() {
                   const status = getStatus(c);
                   return (
                     <tr key={c.id} className="hover:bg-slate-50/50 transition-colors">
-                      <td className="px-5 py-4">
-                        <span className="font-mono font-bold text-slate-900 bg-slate-100 px-2.5 py-1 rounded-lg text-xs tracking-widest">
+                      <td className="px-3 py-3 sm:px-5 sm:py-4">
+                        <span className="font-mono font-bold text-slate-900 bg-slate-100 px-2 py-1 rounded-lg text-xs tracking-widest">
                           {c.code}
                         </span>
                       </td>
-                      <td className="px-5 py-4">
-                        <span className="font-bold text-slate-900">
+                      <td className="px-3 py-3 sm:px-5 sm:py-4">
+                        <span className="font-bold text-slate-900 text-sm">
                           {c.type === 'percentage' ? `${c.value}%` : formatPrice(c.value)}
                         </span>
                         {c.maxDiscount && c.type === 'percentage' && (
-                          <span className="text-slate-400 text-xs ml-1">max {formatPrice(c.maxDiscount)}</span>
+                          <span className="text-slate-400 text-xs ml-1 hidden sm:inline">max {formatPrice(c.maxDiscount)}</span>
                         )}
                       </td>
-                      <td className="px-5 py-4 text-slate-600">
+                      <td className="px-3 py-3 sm:px-5 sm:py-4 text-slate-600 hidden sm:table-cell">
                         {c.minOrderValue ? formatPrice(c.minOrderValue) : <span className="text-slate-400">—</span>}
                       </td>
-                      <td className="px-5 py-4 text-slate-600">
+                      <td className="px-3 py-3 sm:px-5 sm:py-4 text-slate-600 hidden md:table-cell">
                         <span className="font-semibold">{c.usesCount}</span>
                         {c.usesLimit != null ? (
                           <span className="text-slate-400">/{c.usesLimit}</span>
@@ -366,38 +366,38 @@ export default function AdminCouponsPage() {
                           <span className="text-slate-400"> / ∞</span>
                         )}
                       </td>
-                      <td className="px-5 py-4 text-slate-500 text-xs">
+                      <td className="px-3 py-3 sm:px-5 sm:py-4 text-slate-500 text-xs hidden lg:table-cell">
                         {c.expiresAt
                           ? new Date(c.expiresAt).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' })
                           : <span className="text-slate-400">Never</span>}
                       </td>
-                      <td className="px-5 py-4">
-                        <span className={`inline-flex items-center gap-1.5 text-xs font-bold px-2.5 py-1 rounded-full ${status.color}`}>
+                      <td className="px-3 py-3 sm:px-5 sm:py-4">
+                        <span className={`inline-flex items-center gap-1 text-[10px] sm:text-xs font-bold px-2 py-0.5 sm:px-2.5 sm:py-1 rounded-full ${status.color}`}>
                           {status.label === 'Active'
                             ? <CheckCircle className="h-3 w-3" />
                             : <XCircle className="h-3 w-3" />}
                           {status.label}
                         </span>
                       </td>
-                      <td className="px-5 py-4">
-                        <div className="flex items-center gap-2">
+                      <td className="px-3 py-3 sm:px-5 sm:py-4">
+                        <div className="flex items-center gap-1">
                           <button
                             onClick={() => toggleActive.mutate(c)}
-                            className="text-xs font-semibold text-slate-500 hover:text-primary transition-colors"
+                            className="text-xs font-semibold text-slate-500 hover:text-primary transition-colors hidden sm:block"
                             title={c.isActive ? 'Deactivate' : 'Activate'}
                           >
                             {c.isActive ? 'Disable' : 'Enable'}
                           </button>
                           <button
                             onClick={() => setModal(c)}
-                            className="p-1.5 text-slate-400 hover:text-primary hover:bg-primary/10 rounded-lg transition-all"
+                            className="p-2 text-slate-400 hover:text-primary hover:bg-primary/10 rounded-lg transition-all"
                             title="Edit"
                           >
                             <Edit className="h-3.5 w-3.5" />
                           </button>
                           <button
                             onClick={() => setDeleteTarget(c)}
-                            className="p-1.5 text-slate-400 hover:text-rose-500 hover:bg-rose-50 rounded-lg transition-all"
+                            className="p-2 text-slate-400 hover:text-rose-500 hover:bg-rose-50 rounded-lg transition-all"
                             title="Delete"
                           >
                             <Trash2 className="h-3.5 w-3.5" />

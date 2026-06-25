@@ -216,7 +216,7 @@ export default function AdminSettingsPage() {
   return (
     <div className="space-y-8 max-w-3xl">
       <div>
-        <h1 className="text-3xl sm:text-4xl font-black tracking-tight text-slate-900 mb-2">Settings</h1>
+        <h1 className="text-2xl sm:text-4xl font-black tracking-tight text-slate-900 mb-2">Settings</h1>
         <p className="text-slate-500 font-medium">Configure store-wide settings for tax, shipping, and payment gateway.</p>
       </div>
 
@@ -404,7 +404,7 @@ export default function AdminSettingsPage() {
                 </div>
               </div>
 
-              <div className="flex items-center justify-between pt-2">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pt-2">
                 <p className="text-xs text-slate-400 font-medium max-w-xs">
                   Shipping fee is auto-applied based on the post-discount cart total. Changes apply to all future orders.
                 </p>
@@ -569,7 +569,7 @@ export default function AdminSettingsPage() {
                 </div>
               </div>
 
-              <div className="flex items-center justify-between pt-2">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pt-2">
                 <p className="text-xs text-slate-400 font-medium max-w-xs">
                   {ppType === 'percentage'
                     ? `Customers pay ${ppValue}% upfront. The remaining ${(100 - parseFloat(ppValue || '0')).toFixed(0)}% is due before dispatch.`
@@ -761,7 +761,7 @@ export default function AdminSettingsPage() {
                 </div>
               </div>
 
-              <div className="flex items-center justify-between pt-2">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pt-2">
                 <p className="text-xs text-slate-400 font-medium max-w-xs">
                   Effective rate: {gwRate}% + {gwTaxRate}% GST = {(parseFloat(gwRate || '0') * (1 + parseFloat(gwTaxRate || '0') / 100)).toFixed(4)}% per online order.
                   Changes apply to all future orders.

@@ -69,15 +69,15 @@ export default function AdminProductsPage() {
   return (
     <div className="space-y-6">
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-        <h1 className="text-3xl font-bold tracking-tight text-slate-900">Products</h1>
-        <Button onClick={handleAdd} className="gap-2"><Plus className="w-4 h-4" /> Add Product</Button>
+        <h1 className="text-2xl sm:text-3xl font-bold tracking-tight text-slate-900">Products</h1>
+        <Button onClick={handleAdd} className="gap-2 w-full sm:w-auto"><Plus className="w-4 h-4" /> Add Product</Button>
       </div>
 
       <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
 
         {/* Toolbar */}
-        <div className="p-4 border-b border-slate-100 flex flex-col sm:flex-row gap-4 bg-slate-50/50">
-          <div className="relative flex-1 max-w-md">
+        <div className="p-3 sm:p-4 border-b border-slate-100 flex flex-col sm:flex-row gap-3 bg-slate-50/50">
+          <div className="relative flex-1 sm:max-w-md">
             <Search className="absolute left-3 top-2.5 h-4 w-4 text-slate-400" />
             <Input
               type="text"
@@ -89,8 +89,59 @@ export default function AdminProductsPage() {
           </div>
         </div>
 
-        {/* Table */}
-        <div className="overflow-x-auto">
+        {/* Mobile Card Layout */}
+        <div className="md:hidden divide-y divide-slate-100">
+          {products.map((product: any) => (
+            <div key={product.id} className="p-4 flex items-center gap-3">
+              <div className="h-12 w-12 bg-slate-100 rounded-lg border border-slate-200 overflow-hidden relative shrink-0">
+                <Image
+                  src={product.images?.[0]?.url || product.imageUrl || '/placeholder.png'}
+                  alt={product.name}
+                  fill
+                  className="object-cover"
+                  unoptimized
+                />
+              </div>
+              <div className="flex-1 min-w-0">
+                <p className="font-bold text-slate-900 text-sm truncate">{product.name}</p>
+                <p className="text-xs text-slate-500 truncate">{product.category?.name || 'Uncategorized'}</p>
+                <div className="flex items-center gap-2 mt-1.5 flex-wrap">
+                  <span className="text-xs font-bold text-slate-700">₹{Number(product.basePrice || 0).toFixed(0)}</span>
+                  <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${
+                    (product.stockQuantity || product.stock || 0) > 10 ? 'bg-green-100 text-green-700' :
+                    (product.stockQuantity || product.stock || 0) > 0  ? 'bg-orange-100 text-orange-700' :
+                    'bg-red-100 text-red-700'
+                  }`}>{product.stockQuantity || product.stock || 0} in stock</span>
+                  <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${product.isActive ? 'bg-blue-100 text-blue-700' : 'bg-slate-100 text-slate-700'}`}>
+                    {product.isActive ? 'Active' : 'Draft'}
+                  </span>
+                </div>
+              </div>
+              <div className="flex gap-1 shrink-0">
+                <button
+                  onClick={() => handleEdit(product)}
+                  className="p-2 text-slate-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-all"
+                >
+                  <Edit className="h-4 w-4" />
+                </button>
+                <button
+                  onClick={() => setDeleteTarget({ id: product.id, name: product.name })}
+                  className="p-2 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-all"
+                >
+                  <Trash2 className="h-4 w-4" />
+                </button>
+              </div>
+            </div>
+          ))}
+          {products.length === 0 && (
+            <div className="px-4 py-12 text-center text-slate-500 text-sm">
+              No products found. Add your first product to get started.
+            </div>
+          )}
+        </div>
+
+        {/* Desktop Table */}
+        <div className="hidden md:block overflow-x-auto">
           <table className="w-full text-left text-sm whitespace-nowrap">
             <thead className="bg-slate-50 text-slate-500 font-semibold border-b border-slate-200">
               <tr>
@@ -137,13 +188,13 @@ export default function AdminProductsPage() {
                     </span>
                   </td>
                   <td className="px-6 py-4 text-right">
-                    <div className="flex justify-end gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
-                      <button onClick={() => handleEdit(product)} className="p-1.5 text-slate-400 hover:text-blue-600 rounded">
+                    <div className="flex justify-end gap-2 opacity-100 lg:opacity-0 lg:group-hover:opacity-100 transition-opacity">
+                      <button onClick={() => handleEdit(product)} className="p-1.5 text-slate-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-all">
                         <Edit className="h-4 w-4" />
                       </button>
                       <button
                         onClick={() => setDeleteTarget({ id: product.id, name: product.name })}
-                        className="p-1.5 text-slate-400 hover:text-red-600 rounded"
+                        className="p-1.5 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-all"
                       >
                         <Trash2 className="h-4 w-4" />
                       </button>

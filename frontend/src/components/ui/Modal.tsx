@@ -30,16 +30,16 @@ export function Modal({ isOpen, onClose, title, children }: ModalProps) {
   return (
     <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-slate-900/50 backdrop-blur-sm animate-in fade-in duration-200">
       <div className="w-full max-w-2xl bg-white rounded-2xl shadow-2xl ring-1 ring-slate-200 overflow-hidden transform animate-in zoom-in-95 duration-200">
-        <div className="flex items-center justify-between px-6 py-4 border-b border-slate-100">
-          <h2 className="text-xl font-bold text-slate-900">{title}</h2>
-          <button 
+        <div className="flex items-center justify-between px-4 sm:px-6 py-4 border-b border-slate-100">
+          <h2 className="text-lg sm:text-xl font-bold text-slate-900">{title}</h2>
+          <button
             onClick={onClose}
             className="p-2 text-slate-400 hover:text-slate-900 hover:bg-slate-50 rounded-full transition-colors"
           >
             <X className="h-5 w-5" />
           </button>
         </div>
-        <div className="p-6 overflow-y-auto max-h-[80vh]">
+        <div className="p-4 sm:p-6 overflow-y-auto max-h-[85vh]">
           {children}
         </div>
       </div>

@@ -53,15 +53,15 @@ export default function AdminDashboardPage() {
 
       <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-4">
         <div>
-          <h1 className="text-3xl sm:text-4xl font-black tracking-tight text-slate-900 mb-2">Dashboard Overview</h1>
+          <h1 className="text-2xl sm:text-4xl font-black tracking-tight text-slate-900 mb-2">Dashboard Overview</h1>
           <p className="text-slate-500 font-medium">Welcome back, {user?.firstName || 'Admin'}. Here's what's happening with your store today.</p>
         </div>
-        <div className="flex gap-3">
-          <Link href="/admin/orders" className="h-11 px-5 bg-white border border-slate-200 rounded-xl font-bold text-sm text-slate-700 shadow-sm hover:bg-slate-50 transition-colors flex items-center gap-2">
+        <div className="flex gap-3 flex-wrap">
+          <Link href="/admin/orders" className="h-10 sm:h-11 px-4 sm:px-5 bg-white border border-slate-200 rounded-xl font-bold text-sm text-slate-700 shadow-sm hover:bg-slate-50 transition-colors flex items-center gap-2">
             <ListOrdered className="w-4 h-4" /> All Orders
           </Link>
-          <Link href="/admin/products" className="h-11 px-5 bg-slate-900 text-white rounded-xl font-bold text-sm shadow-lg shadow-slate-900/20 hover:bg-slate-700 transition-colors flex items-center gap-2">
-            <TrendingUp className="w-4 h-4" /> Manage Products
+          <Link href="/admin/products" className="h-10 sm:h-11 px-4 sm:px-5 bg-slate-900 text-white rounded-xl font-bold text-sm shadow-lg shadow-slate-900/20 hover:bg-slate-700 transition-colors flex items-center gap-2">
+            <TrendingUp className="w-4 h-4" /> Products
           </Link>
         </div>
       </div>
@@ -100,10 +100,10 @@ export default function AdminDashboardPage() {
             <table className="w-full text-left border-collapse">
               <thead>
                 <tr className="border-b border-slate-100 text-[10px] uppercase tracking-widest text-slate-400 font-black bg-white">
-                  <th className="p-6 font-semibold">Order ID</th>
-                  <th className="p-6 font-semibold">Customer</th>
-                  <th className="p-6 font-semibold">Status</th>
-                  <th className="p-6 font-semibold text-right">Amount</th>
+                  <th className="px-4 py-4 sm:px-6 font-semibold">Order ID</th>
+                  <th className="px-4 py-4 sm:px-6 font-semibold hidden sm:table-cell">Customer</th>
+                  <th className="px-4 py-4 sm:px-6 font-semibold">Status</th>
+                  <th className="px-4 py-4 sm:px-6 font-semibold text-right">Amount</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-50">
@@ -113,21 +113,22 @@ export default function AdminDashboardPage() {
                   </tr>
                 ) : recentOrders.map((order: any) => (
                   <tr key={order.id} className="hover:bg-slate-50/50 transition-colors group cursor-pointer">
-                    <td className="p-6 font-bold text-slate-900 text-sm">
+                    <td className="px-4 py-4 sm:px-6 font-bold text-slate-900 text-sm">
                       <Link href={`/admin/orders/${order.id}`} className="group-hover:text-primary transition-colors font-mono">
                         #{order.id.slice(0, 8).toUpperCase()}
                       </Link>
+                      <p className="text-xs text-slate-500 font-normal sm:hidden mt-0.5">{order.user?.firstName} {order.user?.lastName}</p>
                     </td>
-                    <td className="p-6">
+                    <td className="px-4 py-4 sm:px-6 hidden sm:table-cell">
                       <p className="font-bold text-slate-900 text-sm">{order.user?.firstName} {order.user?.lastName}</p>
                       <p className="text-xs text-slate-500">{order.user?.email}</p>
                     </td>
-                    <td className="p-6">
-                      <span className={`inline-flex items-center px-2.5 py-1 rounded-md text-[10px] font-black uppercase tracking-widest ${STATUS_CLASSES[order.status] || STATUS_CLASSES.processing}`}>
+                    <td className="px-4 py-4 sm:px-6">
+                      <span className={`inline-flex items-center px-2 py-0.5 sm:px-2.5 sm:py-1 rounded-md text-[10px] font-black uppercase tracking-widest ${STATUS_CLASSES[order.status] || STATUS_CLASSES.processing}`}>
                         {order.status}
                       </span>
                     </td>
-                    <td className="p-6 font-black text-slate-900 text-right">{formatPrice(Number(order.totalAmount || order.total))}</td>
+                    <td className="px-4 py-4 sm:px-6 font-black text-slate-900 text-right text-sm">{formatPrice(Number(order.totalAmount || order.total))}</td>
                   </tr>
                 ))}
               </tbody>

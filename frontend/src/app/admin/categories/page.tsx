@@ -75,18 +75,18 @@ export default function AdminCategoriesPage() {
   return (
     <div className="space-y-6">
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-        <h1 className="text-3xl font-bold tracking-tight text-slate-900">Categories</h1>
-        <Button onClick={handleAdd} className="gap-2"><Plus className="w-4 h-4" /> Add Category</Button>
+        <h1 className="text-2xl sm:text-3xl font-bold tracking-tight text-slate-900">Categories</h1>
+        <Button onClick={handleAdd} className="gap-2 w-full sm:w-auto"><Plus className="w-4 h-4" /> Add Category</Button>
       </div>
 
       <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
-        <div className="p-4 border-b border-slate-100 bg-slate-50/50">
-           <div className="relative flex-1 max-w-md">
+        <div className="p-3 sm:p-4 border-b border-slate-100 bg-slate-50/50">
+           <div className="relative flex-1 sm:max-w-md">
               <Search className="absolute left-3 top-2.5 h-4 w-4 text-slate-400" />
-              <Input 
-                type="text" 
-                placeholder="Search categories..." 
-                className="pl-9 h-10 w-full bg-white" 
+              <Input
+                type="text"
+                placeholder="Search categories..."
+                className="pl-9 h-10 w-full bg-white"
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
               />
@@ -94,46 +94,46 @@ export default function AdminCategoriesPage() {
         </div>
 
         <div className="overflow-x-auto">
-          <table className="w-full text-left text-sm whitespace-nowrap">
+          <table className="w-full text-left text-sm">
             <thead className="bg-slate-50 text-slate-500 font-semibold border-b border-slate-200">
               <tr>
-                <th className="px-6 py-4">Category</th>
-                <th className="px-6 py-4">Slug</th>
-                <th className="px-6 py-4">Sort Order</th>
-                <th className="px-6 py-4">Status</th>
-                <th className="px-6 py-4 text-right">Actions</th>
+                <th className="px-4 py-3 sm:px-6 sm:py-4">Category</th>
+                <th className="px-4 py-3 sm:px-6 sm:py-4 hidden sm:table-cell">Slug</th>
+                <th className="px-4 py-3 sm:px-6 sm:py-4 hidden lg:table-cell">Sort Order</th>
+                <th className="px-4 py-3 sm:px-6 sm:py-4">Status</th>
+                <th className="px-4 py-3 sm:px-6 sm:py-4 text-right">Actions</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100">
                {filteredCategories.map((category: any) => (
                 <tr key={category.id} className="group hover:bg-slate-50/50 transition-colors">
-                  <td className="px-6 py-4">
-                    <div className="flex items-center gap-3" style={{ paddingLeft: `${category.level * 2}rem` }}>
-                      {category.level > 0 && <ChevronRight className="h-3 w-3 text-slate-400" />}
-                      <div className="h-8 w-8 bg-slate-100 rounded flex items-center justify-center text-slate-500">
-                        <FolderOpen className="h-4 w-4" />
+                  <td className="px-4 py-3 sm:px-6 sm:py-4">
+                    <div className="flex items-center gap-2 sm:gap-3" style={{ paddingLeft: `${category.level * 1}rem` }}>
+                      {category.level > 0 && <ChevronRight className="h-3 w-3 text-slate-400 shrink-0" />}
+                      <div className="h-7 w-7 sm:h-8 sm:w-8 bg-slate-100 rounded flex items-center justify-center text-slate-500 shrink-0">
+                        <FolderOpen className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
                       </div>
-                      <span className="font-bold text-slate-900">{category.name}</span>
+                      <span className="font-bold text-slate-900 text-sm truncate max-w-[120px] sm:max-w-none">{category.name}</span>
                     </div>
                   </td>
-                  <td className="px-6 py-4 text-slate-500">{category.slug}</td>
-                  <td className="px-6 py-4 text-slate-500">{category.sortOrder}</td>
-                  <td className="px-6 py-4">
-                    <span className={`px-2.5 py-1 rounded-full text-xs font-bold ${category.isActive ? 'bg-green-100 text-green-700' : 'bg-slate-100 text-slate-700'}`}>
+                  <td className="px-4 py-3 sm:px-6 sm:py-4 text-slate-500 text-xs hidden sm:table-cell">{category.slug}</td>
+                  <td className="px-4 py-3 sm:px-6 sm:py-4 text-slate-500 hidden lg:table-cell">{category.sortOrder}</td>
+                  <td className="px-4 py-3 sm:px-6 sm:py-4">
+                    <span className={`px-2 py-0.5 rounded-full text-[10px] sm:text-xs font-bold ${category.isActive ? 'bg-green-100 text-green-700' : 'bg-slate-100 text-slate-700'}`}>
                       {category.isActive ? 'Active' : 'Inactive'}
                     </span>
                   </td>
-                  <td className="px-6 py-4 text-right">
-                    <div className="flex justify-end gap-2">
-                       <button 
+                  <td className="px-4 py-3 sm:px-6 sm:py-4 text-right">
+                    <div className="flex justify-end gap-1">
+                       <button
                         onClick={() => handleEdit(category)}
-                        className="p-1.5 text-slate-400 hover:text-blue-600 rounded"
+                        className="p-2 text-slate-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-all"
                        >
                         <Edit className="h-4 w-4" />
                        </button>
-                       <button 
+                       <button
                         onClick={() => handleDelete(category.id)}
-                        className="p-1.5 text-slate-400 hover:text-red-600 rounded"
+                        className="p-2 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-all"
                         disabled={deleteMutation.isPending}
                        >
                         <Trash2 className="h-4 w-4" />

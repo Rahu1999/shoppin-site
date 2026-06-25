@@ -56,15 +56,15 @@ export default function AdminUsersPage() {
   return (
     <div className="space-y-6">
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-        <h1 className="text-3xl font-bold tracking-tight text-slate-900">Users</h1>
-        <Button className="gap-2" onClick={() => { setEditingUser(null); setIsModalOpen(true); }}>
+        <h1 className="text-2xl sm:text-3xl font-bold tracking-tight text-slate-900">Users</h1>
+        <Button className="gap-2 w-full sm:w-auto" onClick={() => { setEditingUser(null); setIsModalOpen(true); }}>
           <UserPlus className="w-4 h-4" /> Add User
         </Button>
       </div>
 
       <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
-        <div className="p-4 border-b border-slate-100 bg-slate-50/50">
-          <div className="relative flex-1 max-w-md">
+        <div className="p-3 sm:p-4 border-b border-slate-100 bg-slate-50/50">
+          <div className="relative flex-1 sm:max-w-md">
             <Search className="absolute left-3 top-2.5 h-4 w-4 text-slate-400" />
             <Input
               type="text"
@@ -76,7 +76,50 @@ export default function AdminUsersPage() {
           </div>
         </div>
 
-        <div className="overflow-x-auto">
+        {/* Mobile Card Layout */}
+        <div className="md:hidden divide-y divide-slate-100">
+          {users?.map((user: any) => {
+            const initials = `${user.firstName?.[0] || '?'}${user.lastName?.[0] || ''}`.toUpperCase();
+            return (
+              <div key={user.id} className="p-4 flex items-center gap-3">
+                <div className="h-10 w-10 bg-primary/10 rounded-full flex items-center justify-center text-primary font-bold shrink-0 text-sm">
+                  {initials}
+                </div>
+                <div className="flex-1 min-w-0">
+                  <p className="font-bold text-slate-900 text-sm">{user.firstName} {user.lastName}</p>
+                  <p className="text-xs text-slate-500 truncate">{user.email}</p>
+                  <div className="flex items-center gap-1.5 mt-1 flex-wrap">
+                    <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${user.status === 'active' ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}`}>
+                      {user.status || 'active'}
+                    </span>
+                    {user.roles?.map((role: string) => (
+                      <span key={role} className="px-1.5 py-0.5 bg-slate-100 text-slate-600 rounded text-[10px] font-bold uppercase">{role}</span>
+                    ))}
+                  </div>
+                </div>
+                <div className="flex gap-1 shrink-0">
+                  <button onClick={() => handleEdit(user)} className="p-2 text-slate-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-all">
+                    <Edit className="h-4 w-4" />
+                  </button>
+                  <button
+                    onClick={() => setDeleteTarget({ id: user.id, name: `${user.firstName} ${user.lastName}` })}
+                    className="p-2 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-all"
+                  >
+                    <Trash2 className="h-4 w-4" />
+                  </button>
+                </div>
+              </div>
+            );
+          })}
+          {users.length === 0 && (
+            <div className="px-4 py-12 text-center text-slate-500 text-sm">
+              {search ? 'No users match your search.' : 'No users found.'}
+            </div>
+          )}
+        </div>
+
+        {/* Desktop Table */}
+        <div className="hidden md:block overflow-x-auto">
           <table className="w-full text-left text-sm whitespace-nowrap">
             <thead className="bg-slate-50 text-slate-500 font-semibold border-b border-slate-200">
               <tr>
@@ -122,12 +165,12 @@ export default function AdminUsersPage() {
                     </td>
                     <td className="px-6 py-4 text-right">
                       <div className="flex justify-end gap-2">
-                        <button onClick={() => handleEdit(user)} className="p-1.5 text-slate-400 hover:text-blue-600 rounded">
+                        <button onClick={() => handleEdit(user)} className="p-1.5 text-slate-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-all">
                           <Edit className="h-4 w-4" />
                         </button>
                         <button
                           onClick={() => setDeleteTarget({ id: user.id, name: `${user.firstName} ${user.lastName}` })}
-                          className="p-1.5 text-slate-400 hover:text-red-600 rounded"
+                          className="p-1.5 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-all"
                         >
                           <Trash2 className="h-4 w-4" />
                         </button>
