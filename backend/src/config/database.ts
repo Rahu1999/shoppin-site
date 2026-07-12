@@ -13,7 +13,7 @@ export const AppDataSource = new DataSource({
   synchronize: env.isDev(),
   logging: env.isDev() ? ['query', 'error'] : ['error'],
   entities: Object.values(Entities).filter(item => typeof item === 'function'),
-  migrations: [join(__dirname, '..', 'database', 'migrations', '**', '*.entity.{ts,js}')],
+  migrations: [join(__dirname, '..', 'database', 'migrations', '**', '*.{ts,js}')],
   subscribers: [],
   extra: {
     connectionLimit: 10,

@@ -1,9 +1,10 @@
-import { Entity, Column, ManyToOne, OneToMany, JoinColumn } from 'typeorm';
+import { Entity, Column, ManyToOne, OneToMany, JoinColumn, Index } from 'typeorm';
 import { BaseEntity } from './base.entity';
 import { User } from './user.entity';
 import { CartItem } from './cart-item.entity';
 
 @Entity('carts')
+@Index('UQ_carts_user_id', ['userId'], { unique: true })
 export class Cart extends BaseEntity {
   @Column({ name: 'user_id', nullable: true })
   userId?: string;

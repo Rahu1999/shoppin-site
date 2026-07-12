@@ -1,4 +1,4 @@
-import { useMutation, useQuery } from '@tanstack/react-query';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { apiPost, apiGet } from '@/services/apiClient';
 import { useAuthStore, User } from '@/store/authStore';
 
@@ -11,6 +11,7 @@ export const useRegistration = () => {
 export const useLogin = () => {
   const setTokens = useAuthStore((s) => s.setTokens);
   const setUser = useAuthStore((s) => s.setUser);
+  const queryClient = useQueryClient();
 
   return useMutation({
     mutationFn: (data: any) => apiPost<{ user: User, accessToken: string, refreshToken: string }>('/auth/login', data),
@@ -19,6 +20,8 @@ export const useLogin = () => {
       setUser(data.user);
       // Merge guest cart into user's cart (fire-and-forget)
       try { await apiPost('/carts/merge'); } catch { /* ignore */ }
+      // Refetch cart so the navbar count reflects the merged user cart
+      queryClient.invalidateQueries({ queryKey: ['cart'] });
     },
   });
 };

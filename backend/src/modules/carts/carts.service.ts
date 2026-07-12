@@ -1,3 +1,4 @@
+import { IsNull } from 'typeorm';
 import { AppDataSource } from '@config/database';
 import { Cart } from '@entities/cart.entity';
 import { CartItem } from '@entities/cart-item.entity';
@@ -21,8 +22,18 @@ export class CartsService {
     });
 
     if (!cart) {
-      cart = this.cartRepo.create(where);
-      await this.cartRepo.save(cart);
+      try {
+        cart = this.cartRepo.create(where);
+        await this.cartRepo.save(cart);
+      } catch (err: any) {
+        // Concurrent request already created this user's cart (unique user_id) — use it
+        if (err?.code !== 'ER_DUP_ENTRY') throw err;
+        cart = await this.cartRepo.findOne({
+          where,
+          relations: ['items', 'items.product', 'items.product.images', 'items.variant'],
+        });
+        if (!cart) throw err;
+      }
     }
     return cart;
   }
@@ -42,7 +53,7 @@ export class CartsService {
     const existingItem = await this.cartItemRepo.findOneBy({
       cartId,
       productId: data.productId,
-      variantId: data.variantId || undefined,
+      variantId: data.variantId ?? IsNull(),
     });
 
     if (existingItem) {

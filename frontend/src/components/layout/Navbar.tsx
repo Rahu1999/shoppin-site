@@ -4,10 +4,12 @@ import Link from 'next/link';
 import { ShoppingCart, Menu, X } from 'lucide-react';
 import { useAuthStore } from '@/store/authStore';
 import { useCartStore } from '@/store/cartStore';
+import { useFetchCart } from '@/hooks/useCart';
 import { useState, useEffect } from 'react';
 import { BRAND } from '@/config/brand';
 
 export function Navbar() {
+  useFetchCart();
   const { isAuthenticated, user, logout } = useAuthStore();
   const { itemCount } = useCartStore();
   const [mounted, setMounted] = useState(false);
