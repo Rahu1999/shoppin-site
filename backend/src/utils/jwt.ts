@@ -24,13 +24,13 @@ export const signRefreshToken = (userId: string): string =>
   });
 
 export const verifyAccessToken = (token: string): JwtAccessPayload => {
-  const payload = jwt.verify(token, env.JWT_ACCESS_SECRET) as JwtAccessPayload;
+  const payload = jwt.verify(token, env.JWT_ACCESS_SECRET, { algorithms: ['HS256'] }) as JwtAccessPayload;
   if (payload.type !== 'access') throw new Error('Invalid token type');
   return payload;
 };
 
 export const verifyRefreshToken = (token: string): JwtRefreshPayload => {
-  const payload = jwt.verify(token, env.JWT_REFRESH_SECRET) as JwtRefreshPayload;
+  const payload = jwt.verify(token, env.JWT_REFRESH_SECRET, { algorithms: ['HS256'] }) as JwtRefreshPayload;
   if (payload.type !== 'refresh') throw new Error('Invalid token type');
   return payload;
 };
