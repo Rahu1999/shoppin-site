@@ -124,7 +124,8 @@ export class AuthService {
   }
 
   public async logout(userId: string) {
-    await this.userRepo.update(userId, { refreshToken: undefined });
+    // Explicit null — TypeORM drops undefined fields, which made this a no-op
+    await this.userRepo.update(userId, { refreshToken: null });
     logAuth('LOGOUT', userId);
   }
 
@@ -163,8 +164,10 @@ export class AuthService {
 
     const hashedPassword = await hashPassword(newPassword);
     user.passwordHash = hashedPassword;
-    user.passwordResetToken = undefined;
-    user.passwordResetExpires = undefined;
+    user.passwordResetToken = null;
+    user.passwordResetExpires = null;
+    // A password reset must also log out every existing session
+    user.refreshToken = null;
     await this.userRepo.save(user);
 
     return { message: 'Password reset successful' };
