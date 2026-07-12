@@ -25,7 +25,7 @@ export default function CheckoutPage() {
   const [paymentMethod, setPaymentMethod] = useState<'COD' | 'ONLINE' | 'PARTIAL'>('ONLINE');
 
   const { data: taxConfig } = useTaxConfig();
-  const gstRate = taxConfig?.rate ?? 12;
+  const gstRate = taxConfig?.rate ?? 18;
   const { data: shippingConfig } = useShippingConfig();
   const { data: gatewayConfig } = usePaymentGatewayConfig();
   const { data: partialConfig } = usePartialPaymentConfig();

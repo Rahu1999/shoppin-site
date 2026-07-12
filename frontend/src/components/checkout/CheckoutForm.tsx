@@ -49,7 +49,7 @@ export function CheckoutForm({ paymentMethod, setPaymentMethod }: CheckoutFormPr
   const router = useRouter();
 
   const { data: taxConfig } = useTaxConfig();
-  const gstRate = taxConfig?.rate ?? 12;
+  const gstRate = taxConfig?.rate ?? 18;
   const { data: shippingConfig } = useShippingConfig();
   const { data: gatewayConfig } = usePaymentGatewayConfig();
   const { data: partialConfig } = usePartialPaymentConfig();
@@ -66,6 +66,7 @@ export function CheckoutForm({ paymentMethod, setPaymentMethod }: CheckoutFormPr
     tax: number;
     taxRate: number;
     discount: number;
+    gatewayFee: number;
     total: number;
     method: string;
     depositAmount?: number;
@@ -235,6 +236,7 @@ export function CheckoutForm({ paymentMethod, setPaymentMethod }: CheckoutFormPr
         tax: Number(res.tax ?? 0),
         taxRate: Number(res.taxRate ?? gstRate),
         discount: Number(res.discount ?? 0),
+        gatewayFee: Number(res.gatewayFee ?? 0),
         total: Number(res.total ?? res.totalAmount ?? total),
         method: paymentMethod,
         depositAmount: paymentMethod === 'PARTIAL' ? Number(res.depositAmount) : undefined,
@@ -314,6 +316,12 @@ export function CheckoutForm({ paymentMethod, setPaymentMethod }: CheckoutFormPr
               <span className="font-bold text-slate-900">{formatPrice(confirmedData.tax)}</span>
             </div>
           )}
+          {confirmedData.gatewayFee > 0 && (
+            <div className="flex justify-between items-center text-sm">
+              <span className="text-slate-500 font-medium">Gateway Charges</span>
+              <span className="font-bold text-slate-900">{formatPrice(confirmedData.gatewayFee)}</span>
+            </div>
+          )}
           {confirmedData.method === 'PARTIAL' ? (
             <>
               <div className="flex justify-between items-center pt-3 border-t border-slate-100">
@@ -380,11 +388,15 @@ export function CheckoutForm({ paymentMethod, setPaymentMethod }: CheckoutFormPr
     : 0;
   const orderTotal = preGatewayTotal + gatewayFeeEstimate;
 
+  // Partial payment is always charged online, so its preview must include the
+  // gateway fee even while COD is the selected method — the backend computes
+  // the deposit from the fee-inclusive total.
+  const partialTotal = gatewayConfig
+    ? preGatewayTotal + calculateGatewayFee(preGatewayTotal, gatewayConfig)
+    : preGatewayTotal;
   const isPartialEligible = partialConfig ? isPartialPaymentEligible(preGatewayTotal, partialConfig) : false;
-  const depositEstimate = paymentMethod === 'PARTIAL' && partialConfig
-    ? calculateDeposit(orderTotal, partialConfig)
-    : 0;
-  const balanceEstimate = paymentMethod === 'PARTIAL' ? calculateBalance(orderTotal, depositEstimate) : 0;
+  const depositEstimate = partialConfig ? calculateDeposit(partialTotal, partialConfig) : 0;
+  const balanceEstimate = calculateBalance(partialTotal, depositEstimate);
 
   const buttonLabel = placeOrder.isPending
     ? (paymentMethod === 'COD' ? 'Placing your order...' : 'Opening payment...')
@@ -671,8 +683,8 @@ export function CheckoutForm({ paymentMethod, setPaymentMethod }: CheckoutFormPr
               <div className="flex-1">
                 <p className="font-bold text-slate-900">{partialConfig.label}</p>
                 <p className="text-xs text-slate-500 mt-0.5">
-                  Pay {formatPrice(depositEstimate || calculateDeposit(orderTotal, partialConfig))} now,{' '}
-                  {formatPrice(calculateBalance(orderTotal, depositEstimate || calculateDeposit(orderTotal, partialConfig)))} before dispatch.
+                  Pay {formatPrice(depositEstimate)} now,{' '}
+                  {formatPrice(balanceEstimate)} before dispatch.
                 </p>
               </div>
             </label>

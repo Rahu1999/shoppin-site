@@ -23,7 +23,7 @@ export default function CartPage() {
   const updateQuantity = useUpdateCartItem();
   const removeItem = useRemoveCartItem();
   const { data: taxConfig } = useTaxConfig();
-  const gstRate = taxConfig?.rate ?? 12;
+  const gstRate = taxConfig?.rate ?? 18;
   const { data: shippingConfig } = useShippingConfig();
   const [promoInput, setPromoInput] = useState('');
 
