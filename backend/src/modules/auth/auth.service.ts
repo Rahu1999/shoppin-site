@@ -10,6 +10,9 @@ import { logAuth } from '@config/logger';
 import { sendMail } from '@utils/emailService';
 import { welcomeEmail, passwordResetEmail } from '@utils/emailTemplates';
 
+const hashToken = (token: string): string =>
+  crypto.createHash('sha256').update(token).digest('hex');
+
 export class AuthService {
   private userRepo = AppDataSource.getRepository(User);
   private roleRepo = AppDataSource.getRepository(Role);
@@ -84,7 +87,7 @@ export class AuthService {
     const tokens = await this.generateTokens(user.id, roles, user.email);
 
     user.lastLoginAt = new Date();
-    user.refreshToken = tokens.refreshToken;
+    user.refreshToken = hashToken(tokens.refreshToken);
     await this.userRepo.save(user);
 
     logAuth('LOGIN_SUCCESS', user.id);
@@ -104,7 +107,7 @@ export class AuthService {
         select: ['id', 'email', 'refreshToken', 'status'],
       });
 
-      if (!user || user.refreshToken !== token) {
+      if (!user || !user.refreshToken || user.refreshToken !== hashToken(token)) {
         throw AppError.unauthorized('Invalid refresh token');
       }
 
@@ -113,7 +116,7 @@ export class AuthService {
       const roles = user.userRoles?.map((ur) => ur.role.name) || ['customer'];
       const tokens = await this.generateTokens(user.id, roles, user.email);
 
-      user.refreshToken = tokens.refreshToken;
+      user.refreshToken = hashToken(tokens.refreshToken);
       await this.userRepo.save(user);
 
       logAuth('REFRESH_SUCCESS', user.id);
