@@ -5,12 +5,14 @@ import helmet from 'helmet';
 import compression from 'compression';
 import cookieParser from 'cookie-parser';
 import morgan from 'morgan';
+import rateLimit from 'express-rate-limit';
 import { env } from '@config/env';
 import { errorHandler, notFoundHandler } from '@middleware/error.middleware';
 import { requestLogger } from '@middleware/logger.middleware';
 import v1Routes from '@api/v1/routes';
 
 const app: Express = express();
+app.set('trust proxy', 1);
 
 // Security and utility middlewares
 app.use(
@@ -43,7 +45,13 @@ app.use('/uploads', express.static(path.join(publicPath, 'uploads'), {
 app.use(requestLogger);
 
 // API Routes
-app.use('/v1', v1Routes);
+const apiLimiter = rateLimit({
+  windowMs: env.RATE_LIMIT_WINDOW_MS,
+  max: env.RATE_LIMIT_MAX,
+  standardHeaders: true,
+  legacyHeaders: false,
+});
+app.use('/v1', apiLimiter, v1Routes);
 
 // 404 and Error Handling
 app.use(notFoundHandler);
