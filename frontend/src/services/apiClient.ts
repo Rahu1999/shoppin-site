@@ -30,7 +30,25 @@ apiClient.interceptors.request.use((config) => {
   return config;
 });
 
-// Handle Token Refresh
+// Handle Token Refresh — single-flight: concurrent 401s share one refresh call.
+// Without this, refresh-token rotation rejects the second parallel refresh and
+// the user gets randomly logged out.
+let refreshPromise: Promise<string> | null = null;
+
+const refreshAccessToken = async (): Promise<string> => {
+  const refreshToken = localStorage.getItem('refreshToken');
+  if (!refreshToken) throw new Error('No refresh token');
+
+  const { data } = await axios.post(`${apiClient.defaults.baseURL}/auth/refresh`, {
+    refreshToken,
+  });
+
+  localStorage.setItem('accessToken', data.data.accessToken);
+  localStorage.setItem('refreshToken', data.data.refreshToken);
+  useAuthStore.getState().setTokens(data.data.accessToken, data.data.refreshToken);
+  return data.data.accessToken;
+};
+
 apiClient.interceptors.response.use(
   (response) => response,
   async (error: AxiosError) => {
@@ -38,20 +56,13 @@ apiClient.interceptors.response.use(
     if (error.response?.status === 401 && !originalRequest._retry) {
       originalRequest._retry = true;
       try {
-        const refreshToken = localStorage.getItem('refreshToken');
-        if (!refreshToken) throw new Error('No refresh token');
-
-        const { data } = await axios.post(`${apiClient.defaults.baseURL}/auth/refresh`, {
-          refreshToken,
-        });
-
-        localStorage.setItem('accessToken', data.data.accessToken);
-        localStorage.setItem('refreshToken', data.data.refreshToken);
-
-        // Update the AuthStore implicitly
-        useAuthStore.getState().setTokens(data.data.accessToken, data.data.refreshToken);
-
-        originalRequest.headers.Authorization = `Bearer ${data.data.accessToken}`;
+        if (!refreshPromise) {
+          refreshPromise = refreshAccessToken().finally(() => {
+            refreshPromise = null;
+          });
+        }
+        const newAccessToken = await refreshPromise;
+        originalRequest.headers.Authorization = `Bearer ${newAccessToken}`;
         return apiClient(originalRequest);
       } catch (refreshError) {
         useAuthStore.getState().logout();
