@@ -44,14 +44,14 @@ export class User extends BaseEntity {
   })
   status!: UserStatus;
 
-  @Column({ name: 'refresh_token', nullable: true, select: false })
-  refreshToken?: string;
+  @Column({ name: 'refresh_token', type: 'varchar', nullable: true, select: false })
+  refreshToken?: string | null;
 
-  @Column({ name: 'password_reset_token', nullable: true, select: false })
-  passwordResetToken?: string;
+  @Column({ name: 'password_reset_token', type: 'varchar', nullable: true, select: false })
+  passwordResetToken?: string | null;
 
   @Column({ name: 'password_reset_expires', nullable: true, type: 'datetime', select: false })
-  passwordResetExpires?: Date;
+  passwordResetExpires?: Date | null;
 
   @Column({ name: 'last_login_at', nullable: true, type: 'datetime' })
   lastLoginAt?: Date;

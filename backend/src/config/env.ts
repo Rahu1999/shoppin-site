@@ -13,6 +13,18 @@ for (const envVar of requiredEnvVars) {
   }
 }
 
+// Refuse to boot production with placeholder or weak JWT secrets
+if (process.env.NODE_ENV === 'production') {
+  for (const key of ['JWT_ACCESS_SECRET', 'JWT_REFRESH_SECRET'] as const) {
+    const value = process.env[key]!;
+    if (value.includes('change_in_production') || value.length < 32) {
+      throw new Error(
+        `${key} is not a secure production secret. Set a random value of at least 32 characters.`
+      );
+    }
+  }
+}
+
 export const env = {
   NODE_ENV: process.env.NODE_ENV ?? 'development',
   PORT: parseInt(process.env.PORT ?? '5000', 10),
