@@ -4,6 +4,7 @@ import { useSearchParams } from 'next/navigation';
 import { useQuery } from '@tanstack/react-query';
 import { apiGet } from '@/services/apiClient';
 import { useAddToCart } from '@/hooks/useCart';
+import { useWishlist, useToggleWishlist } from '@/hooks/useWishlist';
 import { ProductCard } from '@/components/product/ProductCard';
 import { Search, Filter, Hash, Loader2 } from 'lucide-react';
 
@@ -13,6 +14,9 @@ function SearchContent() {
   const searchParams = useSearchParams();
   const query = searchParams.get('q') || '';
   const { mutate: addToCart } = useAddToCart();
+  const { data: wishlist } = useWishlist();
+  const { toggle: toggleWishlist } = useToggleWishlist();
+  const wishlistedIds = new Set((wishlist?.items || []).map((i: any) => i.productId));
 
   const { data: productsData, isLoading } = useQuery({
     queryKey: ['products', 'search', query],
@@ -68,6 +72,8 @@ function SearchContent() {
                     key={product.id}
                     product={product}
                     onAddToCart={(id) => addToCart({ productId: id, quantity: 1 })}
+                    isWishlisted={wishlistedIds.has(product.id)}
+                    onToggleWishlist={toggleWishlist}
                   />
                 ))}
               </div>

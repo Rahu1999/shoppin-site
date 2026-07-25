@@ -9,6 +9,7 @@ import { Input } from '@/components/ui/Input';
 import { Button } from '@/components/ui/Button';
 import { Search, Loader2, AlertCircle, Check, ChevronDown } from 'lucide-react';
 import { useAddToCart } from '@/hooks/useCart';
+import { useWishlist, useToggleWishlist } from '@/hooks/useWishlist';
 
 function ProductsContent() {
   const searchParams = useSearchParams();
@@ -34,6 +35,9 @@ function ProductsContent() {
 
   const { data: categories } = useCategoriesTree();
   const { mutate: addToCart } = useAddToCart();
+  const { data: wishlist } = useWishlist();
+  const { toggle: toggleWishlist } = useToggleWishlist();
+  const wishlistedIds = new Set((wishlist?.items || []).map((i: any) => i.productId));
 
   const products = data?.items || [];
   const meta = data?.meta;
@@ -183,6 +187,8 @@ function ProductsContent() {
                   key={product.id}
                   product={product}
                   onAddToCart={handleAddToCart}
+                  isWishlisted={wishlistedIds.has(product.id)}
+                  onToggleWishlist={toggleWishlist}
                 />
               ))}
             </ProductGrid>

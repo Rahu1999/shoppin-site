@@ -5,6 +5,7 @@ import Link from 'next/link';
 import { ArrowRight, ShieldCheck, Package, Clock, Sparkles, Loader2, Phone, Mail, MapPin, CheckCircle, MessageSquare } from 'lucide-react';
 import { useProducts } from '@/hooks/useProducts';
 import { useAddToCart } from '@/hooks/useCart';
+import { useWishlist, useToggleWishlist } from '@/hooks/useWishlist';
 import { ProductCard } from '@/components/product/ProductCard';
 import { ProductGrid } from '@/components/product/ProductGrid';
 import { Input } from '@/components/ui/Input';
@@ -41,6 +42,9 @@ export default function Home() {
   const { data: featuredData, isLoading } = useProducts({ isFeatured: 'true', limit: 6 });
   const { data: allData, isLoading: allLoading } = useProducts({ limit: 6 });
   const { mutate: addToCart } = useAddToCart();
+  const { data: wishlist } = useWishlist();
+  const { toggle: toggleWishlist } = useToggleWishlist();
+  const wishlistedIds = new Set((wishlist?.items || []).map((i: any) => i.productId));
 
   const [formState, setFormState] = useState({ name: '', phone: '', message: '' });
   const [submitted, setSubmitted] = useState(false);
@@ -215,6 +219,8 @@ export default function Home() {
                   key={product.id}
                   product={product as any}
                   onAddToCart={handleAddToCart}
+                  isWishlisted={wishlistedIds.has(product.id)}
+                  onToggleWishlist={toggleWishlist}
                 />
               ))}
             </ProductGrid>

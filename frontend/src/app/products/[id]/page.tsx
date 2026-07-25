@@ -3,9 +3,10 @@
 import { useParams } from 'next/navigation';
 import { useProductDetail, useProducts } from '@/hooks/useProducts';
 import { useAddToCart } from '@/hooks/useCart';
+import { useWishlist, useToggleWishlist } from '@/hooks/useWishlist';
 import { Button } from '@/components/ui/Button';
 import Image from 'next/image';
-import { ArrowLeft, ShoppingCart, Minus, Plus, Loader2, CheckCircle2, MessageCircle } from 'lucide-react';
+import { ArrowLeft, ShoppingCart, Heart, Minus, Plus, Loader2, CheckCircle2, MessageCircle } from 'lucide-react';
 import Link from 'next/link';
 import { useState, useEffect } from 'react';
 import { formatPrice } from '@/utils/price';
@@ -38,6 +39,8 @@ export default function ProductDetailPage() {
   const { data: productData, isLoading, isError } = useProductDetail(productId);
   const product: any = productData;
   const addToCart = useAddToCart();
+  const { data: wishlist } = useWishlist();
+  const { toggle: toggleWishlist } = useToggleWishlist();
   const [qty, setQty] = useState(1);
   const [selectedImage, setSelectedImage] = useState<string | null>(null);
   const [selectedVariant, setSelectedVariant] = useState<any>(null);
@@ -95,6 +98,7 @@ export default function ProductDetailPage() {
     );
   }
 
+  const isWishlisted = (wishlist?.items || []).some((i: any) => i.productId === product.id);
   const activeVariants = (product.variants || []).filter((v: any) => v.isActive);
   const hasVariants = activeVariants.length > 0;
 
@@ -331,6 +335,16 @@ export default function ProductDetailPage() {
                     : 'Add to Cart'}
                 </Button>
 
+                {/* Wishlist */}
+                <button
+                  onClick={() => toggleWishlist(product.id)}
+                  className="h-12 w-12 sm:w-14 shrink-0 border border-gray-200 hover:border-gray-400 rounded-xl flex items-center justify-center transition-colors hover:bg-gray-50"
+                  title={isWishlisted ? 'Remove from wishlist' : 'Add to wishlist'}
+                  aria-label={isWishlisted ? 'Remove from wishlist' : 'Add to wishlist'}
+                >
+                  <Heart className={`h-5 w-5 transition-colors ${isWishlisted ? 'text-rose-500 fill-rose-500' : 'text-gray-500'}`} />
+                </button>
+
                 {/* WhatsApp Enquire */}
                 <a
                   href={whatsappLink}
@@ -370,6 +384,8 @@ export default function ProductDetailPage() {
                   key={p.id}
                   product={p}
                   onAddToCart={(id) => addToCart.mutate({ productId: id, quantity: 1 })}
+                  isWishlisted={(wishlist?.items || []).some((i: any) => i.productId === p.id)}
+                  onToggleWishlist={toggleWishlist}
                 />
               ))}
             </ProductGrid>

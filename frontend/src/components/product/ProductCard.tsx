@@ -1,5 +1,5 @@
 import Link from 'next/link';
-import { ShoppingCart } from 'lucide-react';
+import { ShoppingCart, Heart } from 'lucide-react';
 import { formatPrice } from '@/utils/price';
 
 interface ProductCardProps {
@@ -15,6 +15,8 @@ interface ProductCardProps {
     category?: { name: string };
   };
   onAddToCart?: (id: string) => void;
+  isWishlisted?: boolean;
+  onToggleWishlist?: (id: string) => void;
 }
 
 /** Extracts a short subtitle from description or shortDescription */
@@ -30,7 +32,7 @@ function getSubtitle(product: ProductCardProps['product']): string {
   return '';
 }
 
-export function ProductCard({ product, onAddToCart }: ProductCardProps) {
+export function ProductCard({ product, onAddToCart, isWishlisted, onToggleWishlist }: ProductCardProps) {
   const primaryImage =
     product?.images?.find((img) => img.isPrimary)?.url ||
     product?.images?.[0]?.url ||
@@ -66,6 +68,25 @@ export function ProductCard({ product, onAddToCart }: ProductCardProps) {
           <span className="absolute top-3 left-3 bg-gray-900 text-white text-[11px] font-bold px-2.5 py-1 rounded-full tracking-wide">
             {discount}% OFF
           </span>
+        )}
+
+        {/* Wishlist toggle */}
+        {onToggleWishlist && (
+          <button
+            onClick={(e) => {
+              e.preventDefault();
+              onToggleWishlist(product.id);
+            }}
+            className="absolute top-3 right-3 p-2 bg-white/90 backdrop-blur-sm rounded-full shadow-sm hover:scale-110 transition-transform"
+            title={isWishlisted ? 'Remove from wishlist' : 'Add to wishlist'}
+            aria-label={isWishlisted ? 'Remove from wishlist' : 'Add to wishlist'}
+          >
+            <Heart
+              className={`h-4 w-4 transition-colors ${
+                isWishlisted ? 'text-rose-500 fill-rose-500' : 'text-gray-400'
+              }`}
+            />
+          </button>
         )}
       </Link>
 

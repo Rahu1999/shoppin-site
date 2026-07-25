@@ -1,19 +1,21 @@
 'use client';
 
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { apiGet, apiDelete } from '@/services/apiClient';
+import { useMutation, useQueryClient } from '@tanstack/react-query';
+import { apiDelete } from '@/services/apiClient';
 import { ProductCard } from '@/components/product/ProductCard';
 import { Button } from '@/components/ui/Button';
-import { Heart, Trash2, Loader2 } from 'lucide-react';
+import { Heart, Loader2 } from 'lucide-react';
 import Link from 'next/link';
 import { useProducts } from '@/hooks/useProducts';
 import { useAddToCart } from '@/hooks/useCart';
+import { useWishlist, useToggleWishlist } from '@/hooks/useWishlist';
 import { AccountLayout } from '@/components/account/AccountLayout';
 
 function FeaturedSuggestions() {
   const { data, isLoading } = useProducts({ isFeatured: 'true', limit: 4 });
   const products = data?.items || [];
   const { mutate: addToCart } = useAddToCart();
+  const { toggle: toggleWishlist } = useToggleWishlist();
 
   const handleAddToCart = (productId: string) => {
     addToCart({ productId, quantity: 1 });
@@ -29,10 +31,11 @@ function FeaturedSuggestions() {
   return (
     <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
       {products.map(p => (
-        <ProductCard 
-          key={p.id} 
-          product={p as any} 
+        <ProductCard
+          key={p.id}
+          product={p as any}
           onAddToCart={handleAddToCart}
+          onToggleWishlist={toggleWishlist}
         />
       ))}
     </div>
@@ -42,22 +45,13 @@ function FeaturedSuggestions() {
 export default function WishlistPage() {
   const queryClient = useQueryClient();
   const { mutate: addToCart } = useAddToCart();
+  const { toggle: toggleWishlist } = useToggleWishlist();
 
   const handleAddToCart = (productId: string) => {
     addToCart({ productId, quantity: 1 });
   };
 
-  const { data: wishlist, isLoading } = useQuery({
-    queryKey: ['wishlist'],
-    queryFn: () => apiGet<any>('/wishlists'),
-  });
-
-  const removeFromWishlist = useMutation({
-    mutationFn: (productId: string) => apiDelete(`/wishlists/items/${productId}`),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['wishlist'] });
-    }
-  });
+  const { data: wishlist, isLoading } = useWishlist();
 
   const clearWishlist = useMutation({
     mutationFn: () => apiDelete('/wishlists'),
@@ -114,19 +108,13 @@ export default function WishlistPage() {
       ) : (
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 xl:gap-8">
           {items.map((item: any) => (
-            <div key={item.id} className="relative group">
-              <ProductCard 
-                product={item.product} 
-                onAddToCart={handleAddToCart}
-              />
-              <button 
-                onClick={() => removeFromWishlist.mutate(item.productId)}
-                className="absolute top-4 right-4 z-10 p-2 bg-white/90 backdrop-blur-sm text-slate-400 hover:text-rose-500 rounded-full shadow-sm opacity-0 group-hover:opacity-100 hover:scale-110 transition-all"
-                title="Remove from wishlist"
-              >
-                <Trash2 className="h-4 w-4" />
-              </button>
-            </div>
+            <ProductCard
+              key={item.id}
+              product={item.product}
+              onAddToCart={handleAddToCart}
+              isWishlisted
+              onToggleWishlist={toggleWishlist}
+            />
           ))}
         </div>
       )}

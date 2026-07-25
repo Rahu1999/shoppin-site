@@ -4,13 +4,14 @@ import { useParams } from 'next/navigation';
 import { useQuery } from '@tanstack/react-query';
 import { apiGet } from '@/services/apiClient';
 import { ProductCard } from '@/components/product/ProductCard';
-import { 
-  Filter, ChevronRight, Hash, ChevronDown, 
-  SlidersHorizontal, Star 
+import {
+  Filter, ChevronRight, Hash, ChevronDown,
+  SlidersHorizontal, Star
 } from 'lucide-react';
 import Link from 'next/link';
 import { useState } from 'react';
 import { Button } from '@/components/ui/Button';
+import { useWishlist, useToggleWishlist } from '@/hooks/useWishlist';
 
 // Mock UI components for filters
 const CheckboxItem = ({ label, count }: { label: string, count?: number }) => (
@@ -58,6 +59,10 @@ export default function CategoryPage() {
     queryKey: ['products', 'category', slug],
     queryFn: () => apiGet<any>(`/products?categorySlug=${slug}`),
   });
+
+  const { data: wishlist } = useWishlist();
+  const { toggle: toggleWishlist } = useToggleWishlist();
+  const wishlistedIds = new Set((wishlist?.items || []).map((i: any) => i.productId));
 
   if (catLoading || prodLoading) {
     return <div className="min-h-[60vh] flex justify-center items-center"><div className="animate-spin h-8 w-8 border-4 border-primary border-t-transparent rounded-full" /></div>;
@@ -204,7 +209,12 @@ export default function CategoryPage() {
             ) : (
               <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4 gap-6">
                 {products.map((product: any) => (
-                  <ProductCard key={product.id} product={product} />
+                  <ProductCard
+                    key={product.id}
+                    product={product}
+                    isWishlisted={wishlistedIds.has(product.id)}
+                    onToggleWishlist={toggleWishlist}
+                  />
                 ))}
               </div>
             )}
