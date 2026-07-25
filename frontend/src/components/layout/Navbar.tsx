@@ -85,6 +85,12 @@ export function Navbar() {
               {isAuthenticated ? (
                 <>
                   <Link
+                    href="/wishlist"
+                    className="text-sm font-medium text-gray-600 hover:text-gray-900 transition-colors px-3 py-1.5 rounded-lg hover:bg-gray-50"
+                  >
+                    Wishlist
+                  </Link>
+                  <Link
                     href="/account"
                     className="text-sm font-medium text-gray-600 hover:text-gray-900 transition-colors px-3 py-1.5 rounded-lg hover:bg-gray-50"
                   >
@@ -144,6 +150,9 @@ export function Navbar() {
                 <>
                   <Link href="/account" onClick={() => setMobileOpen(false)} className="block text-sm font-medium text-gray-700 px-3 py-2.5 rounded-lg hover:bg-gray-50">
                     My Account
+                  </Link>
+                  <Link href="/wishlist" onClick={() => setMobileOpen(false)} className="block text-sm font-medium text-gray-700 px-3 py-2.5 rounded-lg hover:bg-gray-50">
+                    Wishlist
                   </Link>
                   <button onClick={() => { logout(); setMobileOpen(false); }} className="block w-full text-left text-sm font-medium text-gray-400 px-3 py-2.5 rounded-lg hover:bg-gray-50">
                     Sign out

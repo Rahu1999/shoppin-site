@@ -8,6 +8,7 @@ import Image from 'next/image';
 
 import { formatPrice } from '@/utils/price';
 import { Button } from '@/components/ui/Button';
+import { AccountLayout } from '@/components/account/AccountLayout';
 
 export default function OrdersPage() {
 
@@ -18,12 +19,14 @@ export default function OrdersPage() {
 
   if (isLoading) {
     return (
-      <div className="container mx-auto px-4 py-24 flex justify-center min-h-[60vh]">
-        <div className="flex flex-col items-center gap-4">
-          <div className="animate-spin h-10 w-10 border-4 border-slate-200 border-t-primary rounded-full" />
-          <p className="text-slate-500 font-semibold animate-pulse">Loading your orders...</p>
+      <AccountLayout>
+        <div className="flex justify-center py-24">
+          <div className="flex flex-col items-center gap-4">
+            <div className="animate-spin h-10 w-10 border-4 border-slate-200 border-t-primary rounded-full" />
+            <p className="text-slate-500 font-semibold animate-pulse">Loading your orders...</p>
+          </div>
         </div>
-      </div>
+      </AccountLayout>
     );
   }
 
@@ -46,8 +49,7 @@ export default function OrdersPage() {
   };
 
   return (
-    <div className="bg-surface min-h-[85vh] pt-12 pb-24">
-      <div className="container mx-auto px-4 max-w-5xl">
+    <AccountLayout>
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-6 mb-10">
           <h1 className="text-3xl sm:text-4xl font-black tracking-tight text-slate-900 flex items-center gap-3">
             <Package className="h-8 w-8 text-primary shrink-0" /> Your Orders
@@ -135,7 +137,6 @@ export default function OrdersPage() {
             ))}
           </div>
         )}
-      </div>
-    </div>
+    </AccountLayout>
   );
 }

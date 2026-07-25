@@ -12,6 +12,7 @@ import { formatPrice } from '@/utils/price';
 import { loadRazorpayScript } from '@/utils/loadRazorpay';
 import { toast } from 'sonner';
 import { Button } from '@/components/ui/Button';
+import { AccountLayout } from '@/components/account/AccountLayout';
 
 const STATUS_STEPS = [
   { key: 'pending',        label: 'Order Placed',  icon: Clock },
@@ -166,22 +167,26 @@ export default function OrderDetailPage() {
 
   if (isLoading || (isError && !isAuthenticated)) {
     return (
-      <div className="container mx-auto px-4 py-24 flex justify-center min-h-[60vh]">
-        <div className="flex flex-col items-center gap-4">
-          <Loader2 className="animate-spin h-10 w-10 text-primary" />
-          <p className="text-slate-500 font-semibold animate-pulse">Loading order details...</p>
+      <AccountLayout>
+        <div className="flex justify-center py-24">
+          <div className="flex flex-col items-center gap-4">
+            <Loader2 className="animate-spin h-10 w-10 text-primary" />
+            <p className="text-slate-500 font-semibold animate-pulse">Loading order details...</p>
+          </div>
         </div>
-      </div>
+      </AccountLayout>
     );
   }
 
   if (!order) {
     return (
-      <div className="p-24 text-center">
-        <Package className="h-16 w-16 text-slate-300 mx-auto mb-4" />
-        <p className="font-bold text-slate-500 text-lg">Order not found</p>
-        <Link href="/orders" className="text-primary font-bold hover:underline mt-4 inline-block">Back to Orders</Link>
-      </div>
+      <AccountLayout>
+        <div className="p-24 text-center">
+          <Package className="h-16 w-16 text-slate-300 mx-auto mb-4" />
+          <p className="font-bold text-slate-500 text-lg">Order not found</p>
+          <Link href="/orders" className="text-primary font-bold hover:underline mt-4 inline-block">Back to Orders</Link>
+        </div>
+      </AccountLayout>
     );
   }
 
@@ -193,9 +198,7 @@ export default function OrderDetailPage() {
     : 0;
 
   return (
-    <div className="bg-surface min-h-[85vh] pt-12 pb-24">
-      <div className="container mx-auto px-4 max-w-5xl">
-
+    <AccountLayout>
         <Link href="/orders" className="inline-flex items-center gap-1.5 text-sm font-bold text-slate-500 hover:text-primary mb-8 transition-colors bg-white px-4 py-2 rounded-xl shadow-sm border border-slate-100 hover:shadow-md">
           <ChevronLeft className="h-4 w-4" /> Back to Orders
         </Link>
@@ -466,8 +469,6 @@ export default function OrderDetailPage() {
             </ul>
           </div>
         )}
-
-      </div>
-    </div>
+    </AccountLayout>
   );
 }

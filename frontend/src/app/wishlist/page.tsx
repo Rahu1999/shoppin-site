@@ -8,6 +8,7 @@ import { Heart, Trash2, Loader2 } from 'lucide-react';
 import Link from 'next/link';
 import { useProducts } from '@/hooks/useProducts';
 import { useAddToCart } from '@/hooks/useCart';
+import { AccountLayout } from '@/components/account/AccountLayout';
 
 function FeaturedSuggestions() {
   const { data, isLoading } = useProducts({ isFeatured: 'true', limit: 4 });
@@ -66,15 +67,19 @@ export default function WishlistPage() {
   });
 
   if (isLoading) {
-    return <div className="p-24 flex justify-center"><div className="animate-spin h-8 w-8 border-4 border-primary border-t-transparent rounded-full" /></div>;
+    return (
+      <AccountLayout>
+        <div className="flex justify-center py-24"><div className="animate-spin h-8 w-8 border-4 border-primary border-t-transparent rounded-full" /></div>
+      </AccountLayout>
+    );
   }
 
   const items = wishlist?.items || [];
 
   return (
-    <div className="container mx-auto px-4 py-12 lg:py-20 bg-surface min-h-[80vh]">
+    <AccountLayout>
       <div className="flex flex-col sm:flex-row justify-between items-center mb-10 gap-4">
-        <h1 className="text-3xl font-bold tracking-tight text-slate-900 flex items-center gap-3">
+        <h1 className="text-3xl sm:text-4xl font-black tracking-tight text-slate-900 flex items-center gap-3">
           <Heart className="h-8 w-8 text-rose-500 fill-rose-500" /> My Wishlist
         </h1>
         {items.length > 0 && (
@@ -86,11 +91,11 @@ export default function WishlistPage() {
 
       {items.length === 0 ? (
         <div className="space-y-20">
-          <div className="bg-white rounded-2xl border border-slate-100 p-16 text-center shadow-sm">
+          <div className="bg-white rounded-3xl border border-slate-100 p-16 text-center shadow-sm">
             <div className="inline-flex items-center justify-center p-6 bg-slate-50 rounded-full mb-6">
               <Heart className="h-12 w-12 text-slate-300" />
             </div>
-            <h2 className="text-2xl font-bold tracking-tight text-slate-900">Your wishlist is empty</h2>
+            <h2 className="text-2xl font-black tracking-tight text-slate-900">Your wishlist is empty</h2>
             <p className="text-slate-500 max-w-md mx-auto mt-2">Save items you love so you can easily find them later. Discover our premium collection below.</p>
             <Link href="/products" className="inline-block mt-8">
               <Button size="lg" className="px-8 h-14">Explore Catalog</Button>
@@ -125,6 +130,6 @@ export default function WishlistPage() {
           ))}
         </div>
       )}
-    </div>
+    </AccountLayout>
   );
 }
