@@ -604,7 +604,7 @@ export function CheckoutForm({ paymentMethod, setPaymentMethod }: CheckoutFormPr
         <div className="p-6 space-y-3">
 
           {/* COD */}
-          <label
+          {/* <label
             onClick={() => setPaymentMethod('COD')}
             className={`flex items-center gap-4 p-4 border-2 rounded-2xl cursor-pointer transition-all ${
               paymentMethod === 'COD'
@@ -622,7 +622,7 @@ export function CheckoutForm({ paymentMethod, setPaymentMethod }: CheckoutFormPr
               <p className="font-bold text-slate-900">Cash on Delivery</p>
               <p className="text-xs text-slate-500 mt-0.5">Pay in cash when your order arrives. No extra charges.</p>
             </div>
-          </label>
+          </label> */}
 
           {/* Online (Razorpay) */}
           <label

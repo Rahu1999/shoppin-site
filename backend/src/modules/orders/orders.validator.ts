@@ -24,7 +24,7 @@ export const checkoutSchema = z.object({
   }).optional(),
   couponCode: z.string().optional(),
   notes: z.string().optional(),
-  paymentMethod: z.enum(['COD', 'ONLINE', 'PARTIAL']).default('COD'),
+  paymentMethod: z.enum(['ONLINE', 'PARTIAL']).default('ONLINE'),
 }).refine(data => {
   return data.shippingAddressId || data.shippingAddress;
 }, {
