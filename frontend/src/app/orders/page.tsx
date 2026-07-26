@@ -2,11 +2,12 @@
 
 import { useQuery } from '@tanstack/react-query';
 import { apiGet } from '@/services/apiClient';
-import { Package, Clock, CheckCircle2, AlertCircle, ChevronRight, Search, FileText } from 'lucide-react';
+import { Package, ChevronRight, Search, FileText } from 'lucide-react';
 import Link from 'next/link';
 import Image from 'next/image';
 
 import { formatPrice } from '@/utils/price';
+import { getOrderStatusMeta } from '@/utils/orderStatus';
 import { Button } from '@/components/ui/Button';
 import { AccountLayout } from '@/components/account/AccountLayout';
 
@@ -33,19 +34,12 @@ export default function OrdersPage() {
   const orders = data?.items || [];
 
   const getStatusBadge = (status: string) => {
-    switch (status?.toLowerCase()) {
-      case 'delivered':
-        return <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-bold bg-green-100 text-green-700 shadow-sm border border-green-200 uppercase tracking-widest"><CheckCircle2 className="w-3.5 h-3.5" /> Delivered</span>;
-      case 'shipped':
-        return <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-bold bg-blue-100 text-blue-700 shadow-sm border border-blue-200 uppercase tracking-widest"><Package className="w-3.5 h-3.5" /> Shipped</span>;
-      case 'cancelled':
-      case 'refunded':
-        return <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-bold bg-rose-100 text-rose-700 shadow-sm border border-rose-200 uppercase tracking-widest"><AlertCircle className="w-3.5 h-3.5" /> {status.charAt(0).toUpperCase() + status.slice(1)}</span>;
-      case 'pending':
-        return <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-bold bg-yellow-100 text-yellow-700 shadow-sm border border-yellow-200 uppercase tracking-widest"><Clock className="w-3.5 h-3.5" /> Pending</span>;
-      default:
-        return <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-bold bg-amber-100 text-amber-700 shadow-sm border border-amber-200 uppercase tracking-widest"><Clock className="w-3.5 h-3.5" /> Processing</span>;
-    }
+    const { label, icon: Icon, colorClasses } = getOrderStatusMeta(status);
+    return (
+      <span className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-bold shadow-sm border uppercase tracking-widest ${colorClasses}`}>
+        <Icon className="w-3.5 h-3.5" /> {label}
+      </span>
+    );
   };
 
   return (
@@ -105,11 +99,15 @@ export default function OrdersPage() {
                      {/* Preview up to 5 items */}
                      {order.items?.slice(0, 5).map((item: any) => (
                        <div key={item.id} className="relative h-20 w-20 bg-slate-50 rounded-xl border border-slate-100 shrink-0 overflow-hidden group-hover:border-slate-200 transition-colors">
-                          <Image 
-                            src={(item.product as any)?.imageUrl || (item.product as any)?.images?.[0]?.url || '/placeholder.png'} 
-                            alt={item.product?.name || 'Product Image'} 
-                            fill 
+                          <Image
+                            src={(item.product as any)?.imageUrl || (item.product as any)?.images?.[0]?.url || '/placeholder-product.svg'}
+                            alt={item.product?.name || 'Product Image'}
+                            fill
                             className="object-cover"
+                            onError={(e) => {
+                              e.currentTarget.onerror = null;
+                              e.currentTarget.src = '/placeholder-product.svg';
+                            }}
                           />
                           {item.quantity > 1 && (
                             <span className="absolute -top-1.5 -right-1.5 bg-slate-900 text-white text-[9px] font-bold h-5 w-5 flex items-center justify-center rounded-full border-2 border-white shadow-sm z-10">

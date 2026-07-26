@@ -22,7 +22,7 @@ export class CouponsService {
 
   public async getCouponByCode(code: string) {
     const coupon = await this.couponRepo.findOneBy({ code: code.toUpperCase() });
-    if (!coupon) throw AppError.notFound('Coupon not found');
+    if (!coupon) throw AppError.notFound('Coupon');
     return coupon;
   }
 

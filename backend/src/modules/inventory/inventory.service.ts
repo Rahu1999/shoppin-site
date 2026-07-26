@@ -73,6 +73,18 @@ export class InventoryService {
       skip,
       take: limit,
       relations: ['changedBy'],
+      select: {
+        id: true,
+        inventoryId: true,
+        changeQty: true,
+        quantityBefore: true,
+        quantityAfter: true,
+        reason: true,
+        notes: true,
+        userId: true,
+        createdAt: true,
+        changedBy: { id: true, firstName: true, lastName: true },
+      },
     });
 
     return { items, meta: buildPaginationMeta(page, limit, total) };

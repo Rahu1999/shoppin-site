@@ -91,11 +91,15 @@ export default function CartPage() {
                     {/* Product Info */}
                     <div className="sm:col-span-6 flex items-center gap-5">
                       <div className="h-28 w-28 sm:h-24 sm:w-24 bg-slate-50 rounded-2xl overflow-hidden relative shrink-0 border border-slate-100">
-                        <Image 
-                          src={(item.product as any)?.imageUrl || (item.product as any)?.images?.[0]?.url || '/placeholder.png'} 
-                          alt={item.product?.name || 'Product'} 
-                          fill 
+                        <Image
+                          src={(item.product as any)?.imageUrl || (item.product as any)?.images?.[0]?.url || '/placeholder-product.svg'}
+                          alt={item.product?.name || 'Product'}
+                          fill
                           className="object-cover"
+                          onError={(e) => {
+                            e.currentTarget.onerror = null;
+                            e.currentTarget.src = '/placeholder-product.svg';
+                          }}
                         />
                       </div>
                       <div className="flex-1 pr-4">

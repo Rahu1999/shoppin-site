@@ -77,7 +77,7 @@ export function AddressManager() {
                     </span>
                   )}
                 </div>
-                <div className="flex gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                <div className="flex gap-2">
                   <button 
                     onClick={() => handleEdit(address)}
                     className="p-1.5 text-slate-400 hover:text-primary hover:bg-white rounded-lg transition-colors shadow-sm"

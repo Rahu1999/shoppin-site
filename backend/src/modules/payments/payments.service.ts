@@ -27,7 +27,7 @@ export class PaymentsService {
   private ppConfigRepo = AppDataSource.getRepository(PartialPaymentConfig);
   private gatewayProviderService = new GatewayProvidersService();
 
-  // ── COD / legacy mock ──────────────────────────────────────────────────────
+  // ── COD ──────────────────────────────────────────────────────────────────
   public async processOrderPayment(orderId: string, userId: string, data: Record<string, any>) {
     const order = await this.orderRepo.findOne({ where: { id: orderId, userId } });
     if (!order) throw AppError.notFound('Order');
@@ -39,43 +39,24 @@ export class PaymentsService {
       throw AppError.badRequest('Payment amount does not match order total');
     }
 
-    const transactionId = `txn_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`;
-
-    if (data.paymentMethod === 'COD') {
-      const payment = this.paymentRepo.create({
-        orderId,
-        amount: data.amount,
-        currency: data.currency || 'INR',
-        provider: 'cod',
-        status: PaymentStatus.PENDING,
-        transactions: [{
-          type: TransactionType.CAPTURE,
-          amount: data.amount,
-          providerReference: `cod_${transactionId}`,
-          status: PaymentStatus.PENDING,
-          metadata: { source: 'cod_checkout' },
-        }],
-      });
-      await this.paymentRepo.save(payment);
-      order.status = OrderStatus.PROCESSING;
-      await this.orderRepo.save(order);
-      return payment;
+    if (data.paymentMethod !== 'COD') {
+      throw AppError.badRequest('Unsupported payment method for this endpoint');
     }
 
-    // Legacy mock — kept for backward compat
+    const transactionId = `txn_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`;
+
     const payment = this.paymentRepo.create({
       orderId,
       amount: data.amount,
-      currency: data.currency,
-      provider: 'MockGateway',
-      providerOrderId: `mock_req_${transactionId}`,
-      status: PaymentStatus.COMPLETED,
+      currency: data.currency || 'INR',
+      provider: 'cod',
+      status: PaymentStatus.PENDING,
       transactions: [{
         type: TransactionType.CAPTURE,
         amount: data.amount,
-        providerReference: transactionId,
-        status: PaymentStatus.COMPLETED,
-        metadata: { source: 'mock_gateway' },
+        providerReference: `cod_${transactionId}`,
+        status: PaymentStatus.PENDING,
+        metadata: { source: 'cod_checkout' },
       }],
     });
     await this.paymentRepo.save(payment);

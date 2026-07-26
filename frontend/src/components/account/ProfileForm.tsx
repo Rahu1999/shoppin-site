@@ -81,7 +81,7 @@ export function ProfileForm({ user }: ProfileFormProps) {
           name="phone" 
           value={formData.phone} 
           onChange={handleChange} 
-          placeholder="+1 (555) 000-0000"
+          placeholder="+91 98765 43210"
         />
       </div>
 

@@ -36,7 +36,7 @@ export function ProductCard({ product, onAddToCart, isWishlisted, onToggleWishli
   const primaryImage =
     product?.images?.find((img) => img.isPrimary)?.url ||
     product?.images?.[0]?.url ||
-    '/placeholder.png';
+    '/placeholder-product.svg';
 
   const subtitle = getSubtitle(product);
 
@@ -62,6 +62,10 @@ export function ProductCard({ product, onAddToCart, isWishlisted, onToggleWishli
           src={primaryImage}
           alt={product?.name || 'Product'}
           className="h-full w-full object-cover object-center transition-transform duration-500 group-hover:scale-105"
+          onError={(e) => {
+            e.currentTarget.onerror = null;
+            e.currentTarget.src = '/placeholder-product.svg';
+          }}
         />
         {/* Discount badge */}
         {hasDiscount && (

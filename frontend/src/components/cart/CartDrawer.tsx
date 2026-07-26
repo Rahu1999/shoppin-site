@@ -60,11 +60,15 @@ export function CartDrawer({ isOpen, onClose }: CartDrawerProps) {
               <div key={item.id} className="flex gap-4 p-3 bg-white border border-slate-100 rounded-xl shadow-sm relative group hover:border-primary/30 transition-colors">
                 
                 <div className="h-20 w-20 flex-shrink-0 bg-slate-50 rounded-md overflow-hidden relative">
-                  <Image 
-                    src={(item.product as any)?.imageUrl || (item.product as any)?.images?.[0]?.url || '/placeholder.png'} 
-                    alt={item.product?.name || 'Product'} 
-                    fill 
+                  <Image
+                    src={(item.product as any)?.imageUrl || (item.product as any)?.images?.[0]?.url || '/placeholder-product.svg'}
+                    alt={item.product?.name || 'Product'}
+                    fill
                     className="object-cover"
+                    onError={(e) => {
+                      e.currentTarget.onerror = null;
+                      e.currentTarget.src = '/placeholder-product.svg';
+                    }}
                   />
                 </div>
 

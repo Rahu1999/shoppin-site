@@ -95,11 +95,15 @@ export default function AdminProductsPage() {
             <div key={product.id} className="p-4 flex items-center gap-3">
               <div className="h-12 w-12 bg-slate-100 rounded-lg border border-slate-200 overflow-hidden relative shrink-0">
                 <Image
-                  src={product.images?.[0]?.url || product.imageUrl || '/placeholder.png'}
+                  src={product.images?.[0]?.url || product.imageUrl || '/placeholder-product.svg'}
                   alt={product.name}
                   fill
                   className="object-cover"
                   unoptimized
+                  onError={(e) => {
+                    e.currentTarget.onerror = null;
+                    e.currentTarget.src = '/placeholder-product.svg';
+                  }}
                 />
               </div>
               <div className="flex-1 min-w-0">
@@ -159,7 +163,7 @@ export default function AdminProductsPage() {
                   <td className="px-6 py-4 flex items-center gap-4">
                     <div className="h-10 w-10 bg-slate-100 rounded border border-slate-200 overflow-hidden relative shrink-0">
                       <Image
-                        src={product.images?.[0]?.url || product.imageUrl || '/placeholder.png'}
+                        src={product.images?.[0]?.url || product.imageUrl || '/placeholder-product.svg'}
                         alt={product.name}
                         fill
                         className="object-cover"

@@ -327,6 +327,11 @@ export class OrdersService {
     });
 
     if (!order) throw AppError.notFound('Order');
+
+    if (order.history) {
+      order.history.sort((a, b) => a.createdAt.getTime() - b.createdAt.getTime());
+    }
+
     return order;
   }
 
@@ -341,7 +346,7 @@ export class OrdersService {
       order: { createdAt: 'DESC' },
       skip,
       take: limit,
-      relations: ['user'],
+      relations: ['user', 'payments'],
     });
 
     return { items, meta: buildPaginationMeta(page, limit, total) };

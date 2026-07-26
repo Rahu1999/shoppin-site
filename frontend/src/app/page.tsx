@@ -171,7 +171,7 @@ export default function Home() {
                     const img =
                       product.images?.find((i: any) => i.isPrimary)?.url ||
                       product.images?.[0]?.url ||
-                      '/placeholder.png';
+                      '/placeholder-product.svg';
                     return (
                       <Link
                         key={product.id}
@@ -182,6 +182,10 @@ export default function Home() {
                           src={img}
                           alt={product.name}
                           className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
+                          onError={(e) => {
+                            e.currentTarget.onerror = null;
+                            e.currentTarget.src = '/placeholder-product.svg';
+                          }}
                         />
                       </Link>
                     );

@@ -83,7 +83,16 @@ export default function CheckoutPage() {
                 {items.map(item => (
                   <li key={item.id} className="py-5 flex items-start gap-4">
                     <div className="relative h-20 w-20 bg-slate-50 rounded-xl border border-slate-100 shrink-0 overflow-hidden">
-                      <Image src={(item.product as any)?.imageUrl || (item.product as any)?.images?.[0]?.url || '/placeholder.png'} alt={item.product?.name || ''} fill className="object-cover" />
+                      <Image
+                        src={(item.product as any)?.imageUrl || (item.product as any)?.images?.[0]?.url || '/placeholder-product.svg'}
+                        alt={item.product?.name || ''}
+                        fill
+                        className="object-cover"
+                        onError={(e) => {
+                          e.currentTarget.onerror = null;
+                          e.currentTarget.src = '/placeholder-product.svg';
+                        }}
+                      />
                       <span className="absolute -top-2 -right-2 bg-slate-900 text-white text-[10px] font-bold h-5 w-5 flex items-center justify-center rounded-full border-2 border-white shadow-sm z-10">
                         {item.quantity}
                       </span>

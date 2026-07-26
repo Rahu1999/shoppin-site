@@ -1,5 +1,6 @@
 'use client';
 
+import { useEffect, useState } from 'react';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { apiDelete } from '@/services/apiClient';
 import { ProductCard } from '@/components/product/ProductCard';
@@ -53,20 +54,21 @@ export default function WishlistPage() {
 
   const { data: wishlist, isLoading } = useWishlist();
 
+  // `isAuthenticated` (and therefore the wishlist query's enabled/loading state)
+  // comes from a client-persisted store, so it can legitimately differ between
+  // the server-rendered HTML and the browser's very first hydration pass. Gate
+  // on mount so both render the identical loading skeleton until the client
+  // has settled, avoiding a hydration mismatch.
+  const [hasMounted, setHasMounted] = useState(false);
+  useEffect(() => setHasMounted(true), []);
+  const showLoading = !hasMounted || isLoading;
+
   const clearWishlist = useMutation({
     mutationFn: () => apiDelete('/wishlists'),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['wishlist'] });
     }
   });
-
-  if (isLoading) {
-    return (
-      <AccountLayout>
-        <div className="flex justify-center py-24"><div className="animate-spin h-8 w-8 border-4 border-primary border-t-transparent rounded-full" /></div>
-      </AccountLayout>
-    );
-  }
 
   const items = wishlist?.items || [];
 
@@ -76,14 +78,16 @@ export default function WishlistPage() {
         <h1 className="text-3xl sm:text-4xl font-black tracking-tight text-slate-900 flex items-center gap-3">
           <Heart className="h-8 w-8 text-rose-500 fill-rose-500" /> My Wishlist
         </h1>
-        {items.length > 0 && (
+        {!showLoading && items.length > 0 && (
           <Button variant="outline" onClick={() => clearWishlist.mutate()} disabled={clearWishlist.isPending} className="text-slate-500 hover:text-red-600 hover:bg-red-50 hover:border-red-200">
             Clear Wishlist
           </Button>
         )}
       </div>
 
-      {items.length === 0 ? (
+      {showLoading ? (
+        <div className="flex justify-center py-24"><div className="animate-spin h-8 w-8 border-4 border-primary border-t-transparent rounded-full" /></div>
+      ) : items.length === 0 ? (
         <div className="space-y-20">
           <div className="bg-white rounded-3xl border border-slate-100 p-16 text-center shadow-sm">
             <div className="inline-flex items-center justify-center p-6 bg-slate-50 rounded-full mb-6">

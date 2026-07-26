@@ -9,6 +9,7 @@ import { Package, MapPin, CreditCard, ChevronLeft, CheckCircle2, AlertCircle, Cl
 import Link from 'next/link';
 import Image from 'next/image';
 import { formatPrice } from '@/utils/price';
+import { getOrderStatusMeta } from '@/utils/orderStatus';
 import { loadRazorpayScript } from '@/utils/loadRazorpay';
 import { toast } from 'sonner';
 import { Button } from '@/components/ui/Button';
@@ -24,7 +25,7 @@ const STATUS_STEPS = [
 
 const STATUS_ORDER = ['pending', 'partially_paid', 'processing', 'shipped', 'delivered'];
 
-function StatusTimeline({ status }: { status: string }) {
+function StatusTimeline({ status, isPartialPayment }: { status: string; isPartialPayment?: boolean }) {
   const s = status?.toLowerCase();
   if (s === 'cancelled' || s === 'refunded') {
     return (
@@ -35,15 +36,17 @@ function StatusTimeline({ status }: { status: string }) {
     );
   }
 
-  const currentIdx = STATUS_ORDER.indexOf(s);
+  const steps = isPartialPayment ? STATUS_STEPS : STATUS_STEPS.filter((step) => step.key !== 'partially_paid');
+  const statusOrder = isPartialPayment ? STATUS_ORDER : STATUS_ORDER.filter((key) => key !== 'partially_paid');
+  const currentIdx = statusOrder.indexOf(s);
 
   return (
     <div className="flex items-start gap-0 w-full">
-      {STATUS_STEPS.map((step, idx) => {
+      {steps.map((step, idx) => {
         const Icon = step.icon;
         const done = idx <= currentIdx;
         const active = idx === currentIdx;
-        const isLast = idx === STATUS_STEPS.length - 1;
+        const isLast = idx === steps.length - 1;
 
         return (
           <div key={step.key} className="flex items-center flex-1 min-w-0">
@@ -76,22 +79,12 @@ function StatusTimeline({ status }: { status: string }) {
 }
 
 function getStatusBadge(status: string) {
-  switch (status?.toLowerCase()) {
-    case 'delivered':
-      return <span className="inline-flex items-center gap-2 px-4 py-2 rounded-full text-sm font-black bg-green-100 text-green-700 border border-green-200 uppercase tracking-widest"><CheckCircle2 className="w-4 h-4" /> Delivered</span>;
-    case 'shipped':
-      return <span className="inline-flex items-center gap-2 px-4 py-2 rounded-full text-sm font-black bg-blue-100 text-blue-700 border border-blue-200 uppercase tracking-widest"><Truck className="w-4 h-4" /> Shipped</span>;
-    case 'cancelled':
-      return <span className="inline-flex items-center gap-2 px-4 py-2 rounded-full text-sm font-black bg-rose-100 text-rose-700 border border-rose-200 uppercase tracking-widest"><AlertCircle className="w-4 h-4" /> Cancelled</span>;
-    case 'refunded':
-      return <span className="inline-flex items-center gap-2 px-4 py-2 rounded-full text-sm font-black bg-slate-100 text-slate-600 border border-slate-200 uppercase tracking-widest"><AlertCircle className="w-4 h-4" /> Refunded</span>;
-    case 'pending':
-      return <span className="inline-flex items-center gap-2 px-4 py-2 rounded-full text-sm font-black bg-yellow-100 text-yellow-700 border border-yellow-200 uppercase tracking-widest"><Clock className="w-4 h-4" /> Pending</span>;
-    case 'partially_paid':
-      return <span className="inline-flex items-center gap-2 px-4 py-2 rounded-full text-sm font-black bg-indigo-100 text-indigo-700 border border-indigo-200 uppercase tracking-widest"><Banknote className="w-4 h-4" /> Deposit Paid</span>;
-    default:
-      return <span className="inline-flex items-center gap-2 px-4 py-2 rounded-full text-sm font-black bg-amber-100 text-amber-700 border border-amber-200 uppercase tracking-widest"><Clock className="w-4 h-4" /> Processing</span>;
-  }
+  const { label, icon: Icon, colorClasses } = getOrderStatusMeta(status);
+  return (
+    <span className={`inline-flex items-center gap-2 px-4 py-2 rounded-full text-sm font-black border uppercase tracking-widest ${colorClasses}`}>
+      <Icon className="w-4 h-4" /> {label}
+    </span>
+  );
 }
 
 export default function OrderDetailPage() {
@@ -222,7 +215,7 @@ export default function OrderDetailPage() {
         {/* Status Timeline */}
         <div className="bg-white rounded-3xl border border-slate-100 shadow-sm p-6 sm:p-8 mb-6">
           <h2 className="font-black text-slate-900 mb-6">Order Progress</h2>
-          <StatusTimeline status={order.status} />
+          <StatusTimeline status={order.status} isPartialPayment={order.isPartialPayment} />
         </div>
 
         {/* Balance Due Card — shown only for partially paid orders */}
@@ -378,7 +371,16 @@ export default function OrderDetailPage() {
                 <li key={item.id} className="p-6 sm:p-8 flex flex-col sm:flex-row items-start sm:items-center gap-5 hover:bg-slate-50/40 transition-colors">
                   <div className="h-20 w-20 bg-slate-50 rounded-2xl relative overflow-hidden shrink-0 border border-slate-100">
                     {imgUrl ? (
-                      <Image src={imgUrl} alt={item.name || 'Product'} fill className="object-cover" />
+                      <Image
+                        src={imgUrl}
+                        alt={item.name || 'Product'}
+                        fill
+                        className="object-cover"
+                        onError={(e) => {
+                          e.currentTarget.onerror = null;
+                          e.currentTarget.src = '/placeholder-product.svg';
+                        }}
+                      />
                     ) : (
                       <div className="h-full w-full flex items-center justify-center">
                         <Package className="h-8 w-8 text-slate-300" />

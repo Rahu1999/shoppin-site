@@ -32,6 +32,10 @@ export class ProductsService {
       queryBuilder.andWhere('product.categoryId = :categoryId', { categoryId: query.categoryId });
     }
 
+    if (query.categorySlug) {
+      queryBuilder.andWhere('category.slug = :categorySlug', { categorySlug: query.categorySlug });
+    }
+
     if (query.brandId) {
       queryBuilder.andWhere('product.brandId = :brandId', { brandId: query.brandId });
     }
@@ -305,5 +309,8 @@ export class ProductsService {
   public async deleteProduct(id: string) {
     const result = await this.productRepo.softDelete(id);
     if (result.affected === 0) throw AppError.notFound('Product');
+
+    const inventoryRepo = AppDataSource.getRepository(Inventory);
+    await inventoryRepo.delete({ productId: id });
   }
 }

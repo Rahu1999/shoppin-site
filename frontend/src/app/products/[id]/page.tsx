@@ -47,7 +47,7 @@ export default function ProductDetailPage() {
 
   // Related products
   const { data: relatedData } = useProducts({
-    category: product?.category?.id,
+    categoryId: product?.category?.id,
     limit: 4,
   });
   const relatedProducts =
@@ -154,12 +154,16 @@ export default function ProductDetailPage() {
             {/* Main image */}
             <div className="aspect-square rounded-2xl overflow-hidden bg-gray-50 border border-gray-100 relative">
               <Image
-                src={selectedImage || product?.images?.[0]?.url || '/placeholder.png'}
+                src={selectedImage || product?.images?.[0]?.url || '/placeholder-product.svg'}
                 alt={product.name}
                 fill
                 className="object-cover object-center"
                 priority
                 unoptimized
+                onError={(e) => {
+                  e.currentTarget.onerror = null;
+                  e.currentTarget.src = '/placeholder-product.svg';
+                }}
               />
               {hasDiscount && (
                 <span className="absolute top-4 left-4 bg-gray-900 text-white text-xs font-bold px-3 py-1.5 rounded-full">
@@ -188,7 +192,17 @@ export default function ProductDetailPage() {
                         : 'border-transparent opacity-60 hover:opacity-100'
                     }`}
                   >
-                    <Image src={img.url} alt={`View ${idx + 1}`} fill className="object-cover" unoptimized />
+                    <Image
+                      src={img.url}
+                      alt={`View ${idx + 1}`}
+                      fill
+                      className="object-cover"
+                      unoptimized
+                      onError={(e) => {
+                        e.currentTarget.onerror = null;
+                        e.currentTarget.src = '/placeholder-product.svg';
+                      }}
+                    />
                   </button>
                 ))}
               </div>

@@ -1,5 +1,6 @@
 import { Entity, Column, ManyToOne, JoinColumn, CreateDateColumn } from 'typeorm';
 import { Inventory } from './inventory.entity';
+import { User } from './user.entity';
 
 export enum InventoryChangeReason {
   PURCHASE = 'purchase',
@@ -40,6 +41,10 @@ export class InventoryLog {
   @ManyToOne(() => Inventory, (inv) => inv.logs)
   @JoinColumn({ name: 'inventory_id' })
   inventory!: Inventory;
+
+  @ManyToOne(() => User)
+  @JoinColumn({ name: 'user_id' })
+  changedBy?: User;
 
   @CreateDateColumn({ name: 'created_at' })
   createdAt!: Date;
