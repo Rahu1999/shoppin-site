@@ -1,6 +1,7 @@
 import Link from 'next/link';
 import { ShoppingCart, Heart } from 'lucide-react';
 import { formatPrice } from '@/utils/price';
+import { StarRating } from '@/components/ui/StarRating';
 
 interface ProductCardProps {
   product: {
@@ -13,6 +14,8 @@ interface ProductCardProps {
     description?: string;
     images: { url: string; isPrimary: boolean }[];
     category?: { name: string };
+    averageRating?: number;
+    reviewCount?: number;
   };
   onAddToCart?: (id: string) => void;
   isWishlisted?: boolean;
@@ -104,11 +107,20 @@ export function ProductCard({ product, onAddToCart, isWishlisted, onToggleWishli
         )}
 
         {/* Name */}
-        <Link href={`/products/${product?.slug}`} className="block mb-2">
+        <Link href={`/products/${product?.slug}`} className="block mb-1">
           <h3 className="font-semibold text-gray-900 text-base leading-snug line-clamp-2 hover:text-gray-600 transition-colors">
             {product?.name || 'Product'}
           </h3>
         </Link>
+
+        {/* Rating */}
+        <StarRating
+          rating={product.averageRating || 0}
+          count={product.reviewCount || 0}
+          size="sm"
+          showCount
+          className="mb-2"
+        />
 
         {/* Subtitle */}
         {subtitle && (

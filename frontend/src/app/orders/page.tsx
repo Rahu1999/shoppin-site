@@ -2,7 +2,7 @@
 
 import { useQuery } from '@tanstack/react-query';
 import { apiGet } from '@/services/apiClient';
-import { Package, ChevronRight, Search, FileText } from 'lucide-react';
+import { Package, ChevronRight, Search, FileText, Star } from 'lucide-react';
 import Link from 'next/link';
 import Image from 'next/image';
 
@@ -10,6 +10,7 @@ import { formatPrice } from '@/utils/price';
 import { getOrderStatusMeta } from '@/utils/orderStatus';
 import { Button } from '@/components/ui/Button';
 import { AccountLayout } from '@/components/account/AccountLayout';
+import { useMyReviewedProductIds } from '@/hooks/useReviews';
 
 export default function OrdersPage() {
 
@@ -17,6 +18,8 @@ export default function OrdersPage() {
     queryKey: ['orders'],
     queryFn: () => apiGet<any>('/orders'),
   });
+  const { data: reviewedData } = useMyReviewedProductIds();
+  const reviewedProductIds = new Set(reviewedData?.productIds || []);
 
   if (isLoading) {
     return (
@@ -131,6 +134,23 @@ export default function OrdersPage() {
                     </Link>
                   </div>
                 </div>
+
+                {/* Write a Review — delivered orders only, excluding already-reviewed items */}
+                {order.status === 'delivered' && order.items?.some((item: any) => item.product?.slug && !reviewedProductIds.has(item.product.id)) && (
+                  <div className="px-6 sm:px-8 pb-6 sm:pb-8 -mt-2 flex flex-wrap gap-x-5 gap-y-2">
+                    {order.items
+                      .filter((item: any) => item.product?.slug && !reviewedProductIds.has(item.product.id))
+                      .map((item: any) => (
+                        <Link
+                          key={item.id}
+                          href={`/products/${item.product.slug}?review=1`}
+                          className="inline-flex items-center gap-1.5 text-xs font-bold text-primary hover:underline"
+                        >
+                          <Star className="h-3.5 w-3.5" /> Review {item.product?.name || item.name}
+                        </Link>
+                      ))}
+                  </div>
+                )}
               </div>
             ))}
           </div>

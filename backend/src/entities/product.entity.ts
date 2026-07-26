@@ -61,6 +61,12 @@ export class Product extends BaseEntity {
   @Column({ name: 'meta_description', nullable: true })
   metaDescription?: string;
 
+  @Column({ name: 'average_rating', type: 'decimal', precision: 3, scale: 2, default: 0 })
+  averageRating!: number;
+
+  @Column({ name: 'review_count', type: 'int', default: 0 })
+  reviewCount!: number;
+
   @Column({ name: 'category_id' })
   categoryId!: string;
 

@@ -56,7 +56,7 @@ All entities extend `BaseEntity` (`src/entities/base.entity.ts`):
 
 Full entity list: `User`, `Role`, `UserRole`, `Permission`, `RolePermission`, `Category`, `Brand`, `Product`, `ProductImage`, `ProductVariant`, `Inventory`, `InventoryLog`, `Cart`, `CartItem`, `Order`, `OrderItem`, `OrderStatusHistory`, `Payment`, `PaymentTransaction`, `Address`, `Review`, `Wishlist`, `WishlistItem`, `Coupon`, `CouponUsage`, `ShippingMethod`, `ShippingRate`, `AuditLog`
 
-Product fields of note: `name`, `slug` (unique), `sku` (unique, optional), `basePrice`, `comparePrice`, `costPrice`, `weightGrams`, `attributes` (JSON), `tags` (JSON array), `isActive`, `isFeatured`, `shortDescription`, `description`, `metaTitle`, `metaDescription`
+Product fields of note: `name`, `slug` (unique), `sku` (unique, optional), `basePrice`, `comparePrice`, `costPrice`, `weightGrams`, `attributes` (JSON), `tags` (JSON array), `isActive`, `isFeatured`, `shortDescription`, `description`, `metaTitle`, `metaDescription`, `averageRating`, `reviewCount` (cached — recomputed by `reviews.service.ts` whenever a review is approved or an approved review is deleted, not live-computed)
 
 ### Middleware
 
@@ -156,8 +156,11 @@ All prefixed with `/api/v1/`:
 | `PATCH /orders/admin/:id/status` | admin | |
 | `POST /payments/orders/:orderId` | required | process payment |
 | `GET /payments/orders/:orderId` | required | |
-| `GET /reviews` | public | |
-| `POST /reviews` | required | |
+| `GET /reviews/product/:productId` | public | paginated, approved only |
+| `POST /reviews` | required | pending admin approval |
+| `GET /reviews/admin/pending` | admin | reviews awaiting approval |
+| `PATCH /reviews/admin/:id/approve` | admin | approve + recompute product rating |
+| `DELETE /reviews/:id` | admin | reject/delete + recompute product rating |
 | `GET /wishlists` | required | |
 | `POST /wishlists/items` | required | |
 | `DELETE /wishlists/items/:id` | required | |
@@ -179,7 +182,8 @@ All prefixed with `/api/v1/`:
 
 - **TanStack React Query v5** for server state. Hooks in `src/hooks/`:
   - `useProducts(query)` — paginated product list, 5-min stale time
-  - `useProductDetail(slug)` — single product with variants/reviews
+  - `useProductDetail(slug)` — single product with variants and cached `averageRating`/`reviewCount`
+  - `useProductReviews(productId)` / `useSubmitReview()` (`src/hooks/useReviews.ts`) — paginated approved reviews for a product; new reviews are pending until admin-approved
   - `useCategoriesTree()` — category tree, 15-min stale time
   - `useFetchCart()` — fetch cart, syncs to `cartStore`
   - `useAddToCart()`, `useUpdateCartItem()`, `useRemoveCartItem()` — mutations

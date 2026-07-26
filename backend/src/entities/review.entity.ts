@@ -1,10 +1,13 @@
-import { Entity, Column, ManyToOne, JoinColumn, Index } from 'typeorm';
+import {
+  Entity, Column, ManyToOne, JoinColumn, Index, Unique,
+} from 'typeorm';
 import { BaseEntity } from './base.entity';
 import { User } from './user.entity';
 import { Product } from './product.entity';
 
 @Entity('reviews')
 @Index(['productId', 'isApproved'])
+@Unique(['userId', 'productId'])
 export class Review extends BaseEntity {
   @Column({ name: 'product_id' })
   productId!: string;

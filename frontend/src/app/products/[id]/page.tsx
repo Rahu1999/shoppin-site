@@ -4,9 +4,16 @@ import { useParams } from 'next/navigation';
 import { useProductDetail, useProducts } from '@/hooks/useProducts';
 import { useAddToCart } from '@/hooks/useCart';
 import { useWishlist, useToggleWishlist } from '@/hooks/useWishlist';
+import { useProductReviews, useSubmitReview, useReviewEligibility } from '@/hooks/useReviews';
+import { useAuthStore } from '@/store/authStore';
 import { Button } from '@/components/ui/Button';
+import { Input } from '@/components/ui/Input';
+import { Textarea } from '@/components/ui/Textarea';
+import { Modal } from '@/components/ui/Modal';
+import { StarRating } from '@/components/ui/StarRating';
+import { StarPicker } from '@/components/ui/StarPicker';
 import Image from 'next/image';
-import { ArrowLeft, ShoppingCart, Heart, Minus, Plus, Loader2, CheckCircle2, MessageCircle } from 'lucide-react';
+import { ArrowLeft, ShoppingCart, Heart, Minus, Plus, Loader2, CheckCircle2, MessageCircle, BadgeCheck } from 'lucide-react';
 import Link from 'next/link';
 import { useState, useEffect } from 'react';
 import { formatPrice } from '@/utils/price';
@@ -41,9 +48,46 @@ export default function ProductDetailPage() {
   const addToCart = useAddToCart();
   const { data: wishlist } = useWishlist();
   const { toggle: toggleWishlist } = useToggleWishlist();
+  const { isAuthenticated } = useAuthStore();
   const [qty, setQty] = useState(1);
   const [selectedImage, setSelectedImage] = useState<string | null>(null);
   const [selectedVariant, setSelectedVariant] = useState<any>(null);
+
+  // ── Reviews ────────────────────────────────────────────────────────────
+  const { data: reviewsData } = useProductReviews(product?.id);
+  const reviews = reviewsData?.items || [];
+  const { data: eligibility } = useReviewEligibility(product?.id);
+  const { submit: submitReview, isPending: isSubmittingReview } = useSubmitReview();
+  const [isReviewModalOpen, setIsReviewModalOpen] = useState(false);
+  const [reviewRating, setReviewRating] = useState(0);
+  const [reviewTitle, setReviewTitle] = useState('');
+  const [reviewBody, setReviewBody] = useState('');
+
+  // Auto-open the review modal when deep-linked from a delivered order
+  useEffect(() => {
+    if (
+      typeof window !== 'undefined' &&
+      new URLSearchParams(window.location.search).get('review') === '1' &&
+      eligibility?.canReview
+    ) {
+      setIsReviewModalOpen(true);
+    }
+  }, [eligibility?.canReview]);
+
+  const handleSubmitReview = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (reviewRating === 0) return;
+    submitReview({
+      productId: product.id,
+      rating: reviewRating,
+      title: reviewTitle.trim() || undefined,
+      body: reviewBody.trim(),
+    });
+    setIsReviewModalOpen(false);
+    setReviewRating(0);
+    setReviewTitle('');
+    setReviewBody('');
+  };
 
   // Related products
   const { data: relatedData } = useProducts({
@@ -219,9 +263,17 @@ export default function ProductDetailPage() {
             )}
 
             {/* Name */}
-            <h1 className="text-3xl md:text-4xl font-bold text-gray-900 leading-tight tracking-tight mb-4">
+            <h1 className="text-3xl md:text-4xl font-bold text-gray-900 leading-tight tracking-tight mb-3">
               {product.name}
             </h1>
+
+            {/* Rating */}
+            <StarRating
+              rating={product.averageRating || 0}
+              count={product.reviewCount || 0}
+              showCount
+              className="mb-4"
+            />
 
             {/* Price */}
             <div className="flex items-baseline gap-3 mb-6">
@@ -387,6 +439,111 @@ export default function ProductDetailPage() {
             )}
           </div>
         </div>
+
+        {/* ── Reviews ──────────────────────────────────────────────────────── */}
+        <div className="border-t border-gray-100 pt-14 mb-14">
+          <div className="flex items-center justify-between mb-8 gap-4 flex-wrap">
+            <div>
+              <h2 className="text-2xl font-bold text-gray-900 mb-2">Customer Reviews</h2>
+              <StarRating rating={product.averageRating || 0} count={product.reviewCount || 0} showCount size="lg" />
+            </div>
+            {!isAuthenticated && (
+              <Button
+                onClick={() => { window.location.href = `/login?redirect=/products/${productId}`; }}
+                variant="outline"
+                className="rounded-xl font-semibold"
+              >
+                Write a Review
+              </Button>
+            )}
+            {isAuthenticated && eligibility?.canReview && (
+              <Button
+                onClick={() => setIsReviewModalOpen(true)}
+                variant="outline"
+                className="rounded-xl font-semibold"
+              >
+                Write a Review
+              </Button>
+            )}
+            {isAuthenticated && eligibility && !eligibility.canReview && !eligibility.alreadyReviewed && (
+              <p className="text-xs text-gray-400 max-w-xs text-right">
+                Only customers who have received this product in a delivered order can write a review.
+              </p>
+            )}
+          </div>
+
+          {reviews.length === 0 ? (
+            <p className="text-gray-500 text-sm">No reviews yet. Be the first to share your experience.</p>
+          ) : (
+            <div className="space-y-6">
+              {reviews.map((review: any) => (
+                <div key={review.id} className="border-b border-gray-100 pb-6">
+                  <div className="flex items-center gap-3 mb-2 flex-wrap">
+                    <StarRating rating={review.rating} count={1} size="sm" />
+                    {review.isVerifiedPurchase && (
+                      <span className="inline-flex items-center gap-1 text-xs font-semibold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-full">
+                        <BadgeCheck className="h-3.5 w-3.5" />
+                        Verified Purchase
+                      </span>
+                    )}
+                    <span className="text-xs text-gray-400">
+                      {new Date(review.createdAt).toLocaleDateString('en-IN', { year: 'numeric', month: 'short', day: 'numeric' })}
+                    </span>
+                  </div>
+                  {review.title && (
+                    <h4 className="font-semibold text-gray-900 mb-1">{review.title}</h4>
+                  )}
+                  <p className="text-sm text-gray-600 leading-relaxed mb-1">{review.body}</p>
+                  <span className="text-xs text-gray-400">
+                    {review.user?.firstName || 'Anonymous'}
+                  </span>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+
+        <Modal isOpen={isReviewModalOpen} onClose={() => setIsReviewModalOpen(false)} title="Write a Review">
+          <form onSubmit={handleSubmitReview} className="space-y-4">
+            <div>
+              <label className="text-xs font-semibold uppercase tracking-widest text-gray-400 mb-2 block">
+                Your Rating
+              </label>
+              <StarPicker value={reviewRating} onChange={setReviewRating} />
+            </div>
+            <div>
+              <label className="text-xs font-semibold uppercase tracking-widest text-gray-400 mb-2 block">
+                Title (optional)
+              </label>
+              <Input
+                value={reviewTitle}
+                onChange={(e) => setReviewTitle(e.target.value)}
+                maxLength={200}
+                placeholder="Sum up your experience"
+              />
+            </div>
+            <div>
+              <label className="text-xs font-semibold uppercase tracking-widest text-gray-400 mb-2 block">
+                Your Review
+              </label>
+              <Textarea
+                value={reviewBody}
+                onChange={(e) => setReviewBody(e.target.value)}
+                minLength={10}
+                required
+                rows={4}
+                placeholder="What did you like or dislike? How did you use this product?"
+              />
+            </div>
+            <Button
+              type="submit"
+              disabled={reviewRating === 0 || reviewBody.trim().length < 10 || isSubmittingReview}
+              className="w-full h-11 bg-gray-900 hover:bg-gray-700 text-white font-semibold rounded-xl"
+            >
+              {isSubmittingReview ? 'Submitting...' : 'Submit Review'}
+            </Button>
+          </form>
+        </Modal>
 
         {/* ── Related Products ──────────────────────────────────────────── */}
         {relatedProducts.length > 0 && (

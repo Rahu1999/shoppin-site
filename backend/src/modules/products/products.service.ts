@@ -95,7 +95,7 @@ export class ProductsService {
   public async getProductBySlug(slug: string) {
     const product = await this.productRepo.findOne({
       where: { slug, isActive: true },
-      relations: ['images', 'brand', 'category', 'variants', 'variants.inventory', 'inventory', 'reviews'],
+      relations: ['images', 'brand', 'category', 'variants', 'variants.inventory', 'inventory'],
     });
 
     if (!product) throw AppError.notFound('Product');

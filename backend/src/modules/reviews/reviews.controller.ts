@@ -14,6 +14,24 @@ export class ReviewsController {
     }
   };
 
+  public getReviewEligibility = async (req: Request, res: Response, next: NextFunction) => {
+    try {
+      const eligibility = await this.reviewsService.getReviewEligibility(req.user!.sub, req.params.productId as string);
+      return successResponse(res, eligibility, 'Review eligibility fetched');
+    } catch (error) {
+      next(error);
+    }
+  };
+
+  public getMyReviewedProductIds = async (req: Request, res: Response, next: NextFunction) => {
+    try {
+      const productIds = await this.reviewsService.getMyReviewedProductIds(req.user!.sub);
+      return successResponse(res, { productIds }, 'Reviewed product ids fetched');
+    } catch (error) {
+      next(error);
+    }
+  };
+
   public createReview = async (req: Request, res: Response, next: NextFunction) => {
     try {
       const review = await this.reviewsService.createReview(req.user!.sub, req.body);
@@ -27,6 +45,24 @@ export class ReviewsController {
     try {
       await this.reviewsService.deleteReview(req.params.id as string);
       return successResponse(res, null, 'Review deleted');
+    } catch (error) {
+      next(error);
+    }
+  };
+
+  public getPendingReviews = async (req: Request, res: Response, next: NextFunction) => {
+    try {
+      const { items, meta } = await this.reviewsService.getPendingReviews(req.query);
+      return successResponse(res, { items, meta }, 'Pending reviews fetched');
+    } catch (error) {
+      next(error);
+    }
+  };
+
+  public approveReview = async (req: Request, res: Response, next: NextFunction) => {
+    try {
+      const review = await this.reviewsService.approveReview(req.params.id as string);
+      return successResponse(res, review, 'Review approved');
     } catch (error) {
       next(error);
     }

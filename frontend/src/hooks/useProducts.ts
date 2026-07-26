@@ -12,6 +12,8 @@ interface Product {
   brand?: { id: string; name: string };
   isFeatured: boolean;
   stock?: number;
+  averageRating: number;
+  reviewCount: number;
 }
 
 interface PaginatedResponse<T> {
@@ -37,7 +39,7 @@ export const useProducts = (query: Record<string, any> = {}) => {
 export const useProductDetail = (slug: string) => {
   return useQuery({
     queryKey: ['product', slug],
-    queryFn: () => apiGet<Product & { description: string; variants: any[]; reviews: any[] }>(`/products/${slug}`),
+    queryFn: () => apiGet<Product & { description: string; variants: any[] }>(`/products/${slug}`),
     enabled: !!slug,
   });
 };

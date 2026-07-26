@@ -5,7 +5,7 @@ import { useEffect } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { apiGet, apiPost } from '@/services/apiClient';
 import { useAuthStore } from '@/store/authStore';
-import { Package, MapPin, CreditCard, ChevronLeft, CheckCircle2, AlertCircle, Clock, Truck, Loader2, Phone, Banknote } from 'lucide-react';
+import { Package, MapPin, CreditCard, ChevronLeft, CheckCircle2, AlertCircle, Clock, Truck, Loader2, Phone, Banknote, Star } from 'lucide-react';
 import Link from 'next/link';
 import Image from 'next/image';
 import { formatPrice } from '@/utils/price';
@@ -14,6 +14,7 @@ import { loadRazorpayScript } from '@/utils/loadRazorpay';
 import { toast } from 'sonner';
 import { Button } from '@/components/ui/Button';
 import { AccountLayout } from '@/components/account/AccountLayout';
+import { useMyReviewedProductIds } from '@/hooks/useReviews';
 
 const STATUS_STEPS = [
   { key: 'pending',        label: 'Order Placed',  icon: Clock },
@@ -98,6 +99,8 @@ export default function OrderDetailPage() {
     queryKey: ['order', orderId],
     queryFn: () => apiGet<any>(`/orders/${orderId}`),
   });
+  const { data: reviewedData } = useMyReviewedProductIds();
+  const reviewedProductIds = new Set(reviewedData?.productIds || []);
 
   const payBalance = useMutation({
     mutationFn: async () => {
@@ -400,6 +403,14 @@ export default function OrderDetailPage() {
                     <p className="text-slate-500 text-sm mt-1 font-medium">
                       {formatPrice(Number(item.price))} <span className="opacity-40">×</span> {item.quantity}
                     </p>
+                    {order.status === 'delivered' && productSlug && !reviewedProductIds.has(item.product?.id) && (
+                      <Link
+                        href={`/products/${productSlug}?review=1`}
+                        className="inline-flex items-center gap-1.5 mt-2 text-xs font-bold text-primary hover:underline"
+                      >
+                        <Star className="h-3.5 w-3.5" /> Write a Review
+                      </Link>
+                    )}
                   </div>
                   <div className="font-black text-slate-900 text-xl shrink-0">
                     {formatPrice(itemTotal)}
