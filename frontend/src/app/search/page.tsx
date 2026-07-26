@@ -1,26 +1,48 @@
 'use client';
 
-import { useSearchParams } from 'next/navigation';
+import { useSearchParams, useRouter } from 'next/navigation';
 import { useQuery } from '@tanstack/react-query';
 import { apiGet } from '@/services/apiClient';
 import { useAddToCart } from '@/hooks/useCart';
 import { useWishlist, useToggleWishlist } from '@/hooks/useWishlist';
 import { ProductCard } from '@/components/product/ProductCard';
-import { Search, Filter, Hash, Loader2 } from 'lucide-react';
+import { Search, Hash, Loader2 } from 'lucide-react';
 
-import { Suspense } from 'react';
+import { Suspense, useEffect, useState } from 'react';
 
 function SearchContent() {
   const searchParams = useSearchParams();
-  const query = searchParams.get('q') || '';
+  const router = useRouter();
+  const urlQuery = searchParams.get('q') || '';
+  const [inputValue, setInputValue] = useState(urlQuery);
+  const [query, setQuery] = useState(urlQuery);
   const { mutate: addToCart } = useAddToCart();
   const { data: wishlist } = useWishlist();
   const { toggle: toggleWishlist } = useToggleWishlist();
   const wishlistedIds = new Set((wishlist?.items || []).map((i: any) => i.productId));
 
+  // Keep local state in sync if the URL changes externally (e.g. navbar search)
+  useEffect(() => {
+    setInputValue(urlQuery);
+    setQuery(urlQuery);
+  }, [urlQuery]);
+
+  // Debounce edits made directly on this page and reflect them in the URL
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      const trimmed = inputValue.trim();
+      setQuery(trimmed);
+      if (trimmed !== urlQuery) {
+        router.replace(trimmed ? `/search?q=${encodeURIComponent(trimmed)}` : '/search');
+      }
+    }, 400);
+    return () => clearTimeout(timer);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [inputValue]);
+
   const { data: productsData, isLoading } = useQuery({
     queryKey: ['products', 'search', query],
-    queryFn: () => apiGet<any>(`/products?search=${query}`),
+    queryFn: () => apiGet<any>('/products', { search: query }),
     enabled: !!query,
   });
 
@@ -33,6 +55,16 @@ function SearchContent() {
            <h1 className="text-3xl md:text-5xl font-black text-slate-900 tracking-tight">
              Search Results
            </h1>
+           <div className="relative max-w-xl mx-auto mt-6">
+             <Search className="absolute left-4 top-1/2 -translate-y-1/2 h-5 w-5 text-slate-400" />
+             <input
+               type="text"
+               value={inputValue}
+               onChange={(e) => setInputValue(e.target.value)}
+               placeholder="Search products..."
+               className="w-full h-12 pl-12 pr-4 rounded-xl border border-slate-200 bg-white text-base text-slate-900 shadow-sm focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary"
+             />
+           </div>
            <p className="text-lg text-slate-500 mt-4">
              {query ? (
                <>Showing results for <span className="font-bold text-slate-900">"{query}"</span></>
@@ -51,9 +83,6 @@ function SearchContent() {
                 <div className="flex items-center gap-2 font-semibold text-slate-700">
                   <Hash className="h-5 w-5 text-primary" /> {productsData?.items?.length || 0} Products Found
                 </div>
-                <button className="flex items-center gap-2 text-sm font-bold text-slate-600 bg-white border border-slate-200 px-4 py-2 rounded-lg hover:border-primary hover:text-primary transition-colors shadow-sm">
-                  <Filter className="h-4 w-4" /> Filter
-                </button>
               </div>
             )}
 
