@@ -64,6 +64,7 @@ export function ProductCard({ product, onAddToCart, isWishlisted, onToggleWishli
         <img
           src={primaryImage}
           alt={product?.name || 'Product'}
+          loading="lazy"
           className="h-full w-full object-cover object-center transition-transform duration-500 group-hover:scale-105"
           onError={(e) => {
             e.currentTarget.onerror = null;

@@ -81,6 +81,18 @@ export default async function ProductDetailPage({
       }
     : null;
 
+  const breadcrumbJsonLd = product
+    ? {
+        '@context': 'https://schema.org',
+        '@type': 'BreadcrumbList',
+        itemListElement: [
+          { '@type': 'ListItem', position: 1, name: 'Home', item: `https://${BRAND.domain}/` },
+          { '@type': 'ListItem', position: 2, name: 'Products', item: `https://${BRAND.domain}/products` },
+          { '@type': 'ListItem', position: 3, name: product.name, item: `https://${BRAND.domain}/products/${product.slug}` },
+        ],
+      }
+    : null;
+
   return (
     <>
       {jsonLd && (
@@ -88,6 +100,13 @@ export default async function ProductDetailPage({
         <script
           type="application/ld+json"
           dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
+        />
+      )}
+      {breadcrumbJsonLd && (
+        // eslint-disable-next-line react/no-danger
+        <script
+          type="application/ld+json"
+          dangerouslySetInnerHTML={{ __html: JSON.stringify(breadcrumbJsonLd) }}
         />
       )}
       <ProductDetailClient />
