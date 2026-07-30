@@ -27,6 +27,8 @@ export function CategoryForm({ category, parentCategories, onSuccess, onCancel }
     slug: category?.slug || '',
     parentId: category?.parentId || '',
     description: category?.description || '',
+    metaTitle: category?.metaTitle || '',
+    metaDescription: category?.metaDescription || '',
     sortOrder: category?.sortOrder || 0,
     isActive: category?.isActive ?? true,
   });
@@ -120,6 +122,25 @@ export function CategoryForm({ category, parentCategories, onSuccess, onCancel }
           rows={3}
           className="w-full p-3 rounded-md border border-slate-200 bg-white text-sm focus:outline-none focus:ring-2 focus:ring-primary/50"
         />
+      </div>
+
+      <div className="p-4 bg-slate-50 rounded-lg space-y-3">
+        <h4 className="text-xs font-bold text-slate-500 uppercase">Search Engine Optimization (SEO)</h4>
+        <div className="space-y-1.5">
+          <label className="text-sm font-semibold text-slate-700">Meta Title</label>
+          <Input name="metaTitle" value={formData.metaTitle} onChange={handleChange} placeholder="Browser tab title" />
+        </div>
+        <div className="space-y-1.5">
+          <label className="text-sm font-semibold text-slate-700">Meta Description</label>
+          <textarea
+            name="metaDescription"
+            value={formData.metaDescription}
+            onChange={handleChange}
+            rows={2}
+            className="w-full p-3 rounded-md border border-slate-200 bg-white text-sm focus:outline-none focus:ring-2 focus:ring-primary/50"
+            placeholder="Search engine snippet"
+          />
+        </div>
       </div>
 
       <div className="flex items-center gap-2">

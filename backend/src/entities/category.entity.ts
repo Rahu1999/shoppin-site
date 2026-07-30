@@ -16,6 +16,12 @@ export class Category extends BaseEntity {
   @Column({ nullable: true })
   description?: string;
 
+  @Column({ name: 'meta_title', nullable: true, length: 255 })
+  metaTitle?: string;
+
+  @Column({ name: 'meta_description', nullable: true })
+  metaDescription?: string;
+
   @Column({ name: 'sort_order', default: 0 })
   sortOrder!: number;
 

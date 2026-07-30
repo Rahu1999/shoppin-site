@@ -11,6 +11,7 @@ import { apiGet } from '@/services/apiClient';
 import { formatPrice } from '@/utils/price';
 import { useState, useEffect, useRef } from 'react';
 import { BRAND } from '@/config/brand';
+import { useCategoriesTree } from '@/hooks/useProducts';
 
 export function Navbar() {
   useFetchCart();
@@ -50,6 +51,8 @@ export function Navbar() {
     staleTime: 30000,
   });
 
+  const { data: categories } = useCategoriesTree();
+
   const goToSearch = (q: string) => {
     if (!q.trim()) return;
     setSearchOpen(false);
@@ -60,6 +63,7 @@ export function Navbar() {
   const navLinks = [
     { href: '/', label: 'Home' },
     { href: '/products', label: 'Products' },
+    ...(categories || []).map((cat: any) => ({ href: `/category/${cat.slug}`, label: cat.name })),
     { href: '/#contact', label: 'Contact' },
   ];
 

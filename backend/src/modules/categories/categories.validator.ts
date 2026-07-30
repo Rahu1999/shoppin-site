@@ -5,6 +5,8 @@ export const createCategorySchema = z.object({
   slug: z.string().min(2).max(200),
   imageUrl: z.string().url().optional(),
   description: z.string().optional(),
+  metaTitle: z.string().max(255).optional(),
+  metaDescription: z.string().optional(),
   parentId: z.string().uuid().optional().nullable().or(z.literal('')).transform(val => val === '' ? null : val),
   sortOrder: z.number().int().default(0),
   isActive: z.boolean().default(true),

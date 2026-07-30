@@ -29,13 +29,40 @@ async function fetchAllProducts() {
   return products;
 }
 
+async function fetchCategorySlugs() {
+  try {
+    const res = await fetch(`${API_BASE}/categories/tree`, { next: { revalidate: 3600 } });
+    if (!res.ok) return [];
+    const json = await res.json();
+    const tree = json.data || json;
+
+    const slugs: string[] = [];
+    const walk = (nodes: any[]) => {
+      for (const node of nodes || []) {
+        if (node.slug) slugs.push(node.slug);
+        if (node.children?.length) walk(node.children);
+      }
+    };
+    walk(Array.isArray(tree) ? tree : []);
+    return slugs;
+  } catch {
+    return [];
+  }
+}
+
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
-  const products = await fetchAllProducts();
+  const [products, categorySlugs] = await Promise.all([fetchAllProducts(), fetchCategorySlugs()]);
 
   const staticRoutes: MetadataRoute.Sitemap = [
     { url: `${SITE_URL}/`, changeFrequency: 'daily', priority: 1 },
     { url: `${SITE_URL}/products`, changeFrequency: 'daily', priority: 0.9 },
   ];
+
+  const categoryRoutes: MetadataRoute.Sitemap = categorySlugs.map((slug) => ({
+    url: `${SITE_URL}/category/${encodeURIComponent(slug)}`,
+    changeFrequency: 'weekly',
+    priority: 0.7,
+  }));
 
   const productRoutes: MetadataRoute.Sitemap = products.map((p) => ({
     url: `${SITE_URL}/products/${encodeURIComponent(p.slug)}`,
@@ -44,5 +71,5 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     priority: 0.8,
   }));
 
-  return [...staticRoutes, ...productRoutes];
+  return [...staticRoutes, ...categoryRoutes, ...productRoutes];
 }

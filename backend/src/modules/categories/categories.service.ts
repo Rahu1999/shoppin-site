@@ -1,9 +1,11 @@
 import { AppDataSource } from '@config/database';
 import { Category } from '@entities/category.entity';
+import { Product } from '@entities/product.entity';
 import { AppError } from '@utils/AppError';
 
 export class CategoriesService {
   private categoryRepo = AppDataSource.getRepository(Category);
+  private productRepo = AppDataSource.getRepository(Product);
 
   public async getCategoriesTree(adminView = false) {
     const where: any = { parentId: undefined };
@@ -24,7 +26,18 @@ export class CategoriesService {
       relations: ['children'],
     });
     if (!category) throw AppError.notFound('Category');
-    return category;
+
+    const products = await this.productRepo
+      .createQueryBuilder('product')
+      .leftJoinAndSelect('product.images', 'images')
+      .leftJoinAndSelect('product.brand', 'brand')
+      .where('product.categoryId = :categoryId', { categoryId: category.id })
+      .andWhere('product.isActive = :isActive', { isActive: true })
+      .orderBy('product.createdAt', 'DESC')
+      .take(100)
+      .getMany();
+
+    return { ...category, products };
   }
 
   // Admin
