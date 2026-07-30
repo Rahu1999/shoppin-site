@@ -15,6 +15,17 @@ async function getProduct(slug: string) {
   }
 }
 
+async function getShippingConfig() {
+  try {
+    const res = await fetch(`${API_BASE}/shipping/config`, { next: { revalidate: 3600 } });
+    if (!res.ok) return null;
+    const json = await res.json();
+    return json.data || json;
+  } catch {
+    return null;
+  }
+}
+
 export async function generateMetadata(
   { params }: { params: Promise<{ id: string }> }
 ): Promise<Metadata> {
@@ -52,7 +63,13 @@ export default async function ProductDetailPage({
   params: Promise<{ id: string }>;
 }) {
   const { id } = await params;
-  const product = await getProduct(id);
+  const [product, shippingConfig] = await Promise.all([getProduct(id), getShippingConfig()]);
+
+  const shippingRate = shippingConfig
+    ? shippingConfig.freeAbove != null && product && Number(product.basePrice) >= Number(shippingConfig.freeAbove)
+      ? 0
+      : Number(shippingConfig.flatFee)
+    : undefined;
 
   const jsonLd = product
     ? {
@@ -77,6 +94,31 @@ export default async function ProductDetailPage({
           price: product.basePrice,
           availability:
             product.stock > 0 ? 'https://schema.org/InStock' : 'https://schema.org/OutOfStock',
+          hasMerchantReturnPolicy: {
+            '@type': 'MerchantReturnPolicy',
+            applicableCountry: 'IN',
+            returnPolicyCategory: 'https://schema.org/MerchantReturnFiniteReturnWindow',
+            merchantReturnDays: 7,
+            returnMethod: 'https://schema.org/ReturnByMail',
+            returnFees: 'https://schema.org/ReturnShippingFees',
+          },
+          ...(shippingRate !== undefined && {
+            shippingDetails: {
+              '@type': 'OfferShippingDetails',
+              shippingRate: { '@type': 'MonetaryAmount', value: shippingRate, currency: 'INR' },
+              shippingDestination: { '@type': 'DefinedRegion', addressCountry: 'IN' },
+              deliveryTime: {
+                '@type': 'ShippingDeliveryTime',
+                handlingTime: { '@type': 'QuantitativeValue', minValue: 1, maxValue: 2, unitCode: 'DAY' },
+                transitTime: {
+                  '@type': 'QuantitativeValue',
+                  minValue: shippingConfig?.estimatedDaysMin ?? 5,
+                  maxValue: shippingConfig?.estimatedDaysMax ?? 7,
+                  unitCode: 'DAY',
+                },
+              },
+            },
+          }),
         },
       }
     : null;
