@@ -1,5 +1,7 @@
 export * from './address.entity';
 export * from './audit-log.entity';
+export * from './blog-post-status.enum';
+export * from './blog-post.entity';
 export * from './brand.entity';
 export * from './cart-item.entity';
 export * from './cart.entity';

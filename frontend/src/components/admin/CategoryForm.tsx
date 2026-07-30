@@ -6,6 +6,7 @@ import { Input } from '@/components/ui/Input';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { apiPost, apiPatch } from '@/services/apiClient';
 import { toast } from 'sonner';
+import { slugify } from '@/utils/slugify';
 
 interface CategoryFormProps {
   category?: any;
@@ -13,9 +14,6 @@ interface CategoryFormProps {
   onSuccess: () => void;
   onCancel: () => void;
 }
-
-const slugify = (s: string) =>
-  s.toLowerCase().trim().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
 
 export function CategoryForm({ category, parentCategories, onSuccess, onCancel }: CategoryFormProps) {
   const queryClient = useQueryClient();

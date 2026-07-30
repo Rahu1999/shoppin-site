@@ -63,6 +63,7 @@ export function Navbar() {
   const coreLinks = [
     { href: '/', label: 'Home' },
     { href: '/products', label: 'Products' },
+    { href: '/blog', label: 'Blog' },
     { href: '/#contact', label: 'Contact' },
   ];
   const categoryLinks = (categories || []).map((cat: any) => ({ href: `/category/${cat.slug}`, label: cat.name }));
