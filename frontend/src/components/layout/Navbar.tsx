@@ -2,7 +2,7 @@
 
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { ShoppingCart, Menu, X, Search, Loader2 } from 'lucide-react';
+import { ShoppingCart, Menu, X, Search, Loader2, Heart, User } from 'lucide-react';
 import { useQuery } from '@tanstack/react-query';
 import { useAuthStore } from '@/store/authStore';
 import { useCartStore } from '@/store/cartStore';
@@ -60,12 +60,13 @@ export function Navbar() {
     router.push(`/search?q=${encodeURIComponent(q.trim())}`);
   };
 
-  const navLinks = [
+  const coreLinks = [
     { href: '/', label: 'Home' },
     { href: '/products', label: 'Products' },
-    ...(categories || []).map((cat: any) => ({ href: `/category/${cat.slug}`, label: cat.name })),
     { href: '/#contact', label: 'Contact' },
   ];
+  const categoryLinks = (categories || []).map((cat: any) => ({ href: `/category/${cat.slug}`, label: cat.name }));
+  const navLinks = [...coreLinks, ...categoryLinks];
 
   // SSR skeleton — avoids hydration mismatch
   if (!mounted) {
@@ -94,8 +95,8 @@ export function Navbar() {
           </Link>
 
           {/* Desktop Nav */}
-          <nav className="hidden md:flex items-center gap-8">
-            {navLinks.map((link) => (
+          <nav className="hidden md:flex items-center gap-6">
+            {coreLinks.map((link) => (
               <Link
                 key={link.href}
                 href={link.href}
@@ -104,6 +105,26 @@ export function Navbar() {
                 {link.label}
               </Link>
             ))}
+
+            {categoryLinks.length > 0 && (
+              <>
+                <span className="h-4 w-px bg-gray-200" aria-hidden="true" />
+                <div className="relative group flex items-center gap-6">
+                  <span className="pointer-events-none absolute -top-4 left-0 whitespace-nowrap text-[10px] font-semibold uppercase tracking-widest text-gray-400 opacity-0 group-hover:opacity-100 transition-opacity">
+                    Shop by Category
+                  </span>
+                  {categoryLinks.map((link) => (
+                    <Link
+                      key={link.href}
+                      href={link.href}
+                      className="text-sm font-medium text-gray-600 hover:text-gray-900 transition-colors"
+                    >
+                      {link.label}
+                    </Link>
+                  ))}
+                </div>
+              </>
+            )}
           </nav>
 
           {/* Right Actions */}
@@ -199,15 +220,19 @@ export function Navbar() {
                 <>
                   <Link
                     href="/wishlist"
-                    className="text-sm font-medium text-gray-600 hover:text-gray-900 transition-colors px-3 py-1.5 rounded-lg hover:bg-gray-50"
+                    className="p-2 text-gray-600 hover:text-gray-900 hover:bg-gray-50 rounded-lg transition-colors"
+                    title="Wishlist"
+                    aria-label="Wishlist"
                   >
-                    Wishlist
+                    <Heart className="h-5 w-5" />
                   </Link>
                   <Link
                     href="/account"
-                    className="text-sm font-medium text-gray-600 hover:text-gray-900 transition-colors px-3 py-1.5 rounded-lg hover:bg-gray-50"
+                    className="p-2 text-gray-600 hover:text-gray-900 hover:bg-gray-50 rounded-lg transition-colors"
+                    title={user?.firstName || 'Account'}
+                    aria-label="Account"
                   >
-                    {user?.firstName || 'Account'}
+                    <User className="h-5 w-5" />
                   </Link>
                   <button
                     onClick={logout}
