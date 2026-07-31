@@ -29,6 +29,29 @@ async function fetchAllProducts() {
   return products;
 }
 
+async function fetchBlogPosts() {
+  const posts: { slug: string; updatedAt?: string }[] = [];
+  let page = 1;
+
+  while (page <= 20) {
+    try {
+      const res = await fetch(`${API_BASE}/blog?page=${page}&limit=100`, {
+        next: { revalidate: 3600 },
+      });
+      if (!res.ok) break;
+      const json = await res.json();
+      const data = json.data || json;
+      posts.push(...(data.items || []));
+      if (!data.meta?.hasNext) break;
+      page += 1;
+    } catch {
+      break;
+    }
+  }
+
+  return posts;
+}
+
 async function fetchCategorySlugs() {
   try {
     const res = await fetch(`${API_BASE}/categories/tree`, { next: { revalidate: 3600 } });
@@ -51,12 +74,24 @@ async function fetchCategorySlugs() {
 }
 
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
-  const [products, categorySlugs] = await Promise.all([fetchAllProducts(), fetchCategorySlugs()]);
+  const [products, categorySlugs, blogPosts] = await Promise.all([
+    fetchAllProducts(),
+    fetchCategorySlugs(),
+    fetchBlogPosts(),
+  ]);
 
   const staticRoutes: MetadataRoute.Sitemap = [
     { url: `${SITE_URL}/`, changeFrequency: 'daily', priority: 1 },
     { url: `${SITE_URL}/products`, changeFrequency: 'daily', priority: 0.9 },
+    { url: `${SITE_URL}/blog`, changeFrequency: 'daily', priority: 0.8 },
   ];
+
+  const blogRoutes: MetadataRoute.Sitemap = blogPosts.map((p) => ({
+    url: `${SITE_URL}/blog/${encodeURIComponent(p.slug)}`,
+    lastModified: p.updatedAt ? new Date(p.updatedAt) : undefined,
+    changeFrequency: 'weekly',
+    priority: 0.7,
+  }));
 
   const categoryRoutes: MetadataRoute.Sitemap = categorySlugs.map((slug) => ({
     url: `${SITE_URL}/category/${encodeURIComponent(slug)}`,
@@ -71,5 +106,5 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     priority: 0.8,
   }));
 
-  return [...staticRoutes, ...categoryRoutes, ...productRoutes];
+  return [...staticRoutes, ...categoryRoutes, ...productRoutes, ...blogRoutes];
 }

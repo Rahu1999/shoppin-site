@@ -4,7 +4,6 @@ import Script from "next/script";
 import "./globals.css";
 import { ReactQueryProvider } from "@/components/providers/ReactQueryProvider";
 import { ConditionalShell } from "@/components/layout/ConditionalShell";
-import { Suspense } from "react";
 import { Toaster } from "sonner";
 import { BRAND } from "@/config/brand";
 
@@ -65,9 +64,7 @@ export default function RootLayout({
         )}
         <Toaster position="top-right" richColors />
         <ReactQueryProvider>
-          <Suspense fallback={null}>
-            <ConditionalShell>{children}</ConditionalShell>
-          </Suspense>
+          <ConditionalShell>{children}</ConditionalShell>
         </ReactQueryProvider>
       </body>
     </html>
