@@ -12,6 +12,7 @@ export * from './coupon-usage.entity';
 export * from './coupon.entity';
 export * from './inventory-log.entity';
 export * from './inventory.entity';
+export * from './module-setting.entity';
 export * from './order-item.entity';
 export * from './order-status-history.entity';
 export * from './order.entity';

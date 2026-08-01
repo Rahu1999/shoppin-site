@@ -1,6 +1,7 @@
 import type { Metadata } from 'next';
 import { notFound } from 'next/navigation';
 import { BRAND } from '@/config/brand';
+import { getPublicModuleFlags } from '@/utils/moduleFlags';
 import CatalogueItemClient from './CatalogueItemClient';
 
 const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000/api/v1';
@@ -52,6 +53,9 @@ export default async function CatalogueItemPage({
 }: {
   params: Promise<{ slug: string }>;
 }) {
+  const flags = await getPublicModuleFlags();
+  if (!flags.catalogue) notFound();
+
   const { slug } = await params;
   const item = await getCatalogueItem(slug);
 

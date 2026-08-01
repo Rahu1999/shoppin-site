@@ -1,6 +1,8 @@
 import type { Metadata } from 'next';
 import Link from 'next/link';
+import { notFound } from 'next/navigation';
 import { BRAND } from '@/config/brand';
+import { getPublicModuleFlags } from '@/utils/moduleFlags';
 
 const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000/api/v1';
 const SITE_URL = `https://${BRAND.domain}`;
@@ -28,6 +30,9 @@ export default async function BlogPage({
 }: {
   searchParams: Promise<{ page?: string }>;
 }) {
+  const flags = await getPublicModuleFlags();
+  if (!flags.blog) notFound();
+
   const { page: pageParam } = await searchParams;
   const page = Math.max(1, parseInt(pageParam || '1', 10) || 1);
   const { items: posts, meta } = await getPosts(page);

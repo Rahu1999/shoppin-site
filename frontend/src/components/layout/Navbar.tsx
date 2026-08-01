@@ -12,6 +12,7 @@ import { formatPrice } from '@/utils/price';
 import { useState, useEffect, useRef } from 'react';
 import { BRAND } from '@/config/brand';
 import { useCategoriesTree } from '@/hooks/useProducts';
+import { usePublicModuleFlags } from '@/hooks/useModuleSettings';
 
 export function Navbar() {
   useFetchCart();
@@ -52,6 +53,7 @@ export function Navbar() {
   });
 
   const { data: categories } = useCategoriesTree();
+  const { data: moduleFlags } = usePublicModuleFlags();
 
   const goToSearch = (q: string) => {
     if (!q.trim()) return;
@@ -63,8 +65,8 @@ export function Navbar() {
   const coreLinks = [
     { href: '/', label: 'Home' },
     { href: '/products', label: 'Products' },
-    { href: '/catalogue', label: 'Catalogue' },
-    { href: '/blog', label: 'Blog' },
+    ...(moduleFlags?.catalogue !== false ? [{ href: '/catalogue', label: 'Catalogue' }] : []),
+    ...(moduleFlags?.blog !== false ? [{ href: '/blog', label: 'Blog' }] : []),
     { href: '/#contact', label: 'Contact' },
   ];
   const categoryLinks = (categories || []).map((cat: any) => ({ href: `/category/${cat.slug}`, label: cat.name }));

@@ -8,8 +8,9 @@ import { useShippingConfig } from '@/hooks/useShippingConfig';
 import { usePaymentGatewayConfig } from '@/hooks/usePaymentGatewayConfig';
 import { usePartialPaymentConfig } from '@/hooks/usePartialPaymentConfig';
 import { useGatewayProviders } from '@/hooks/useGatewayProviders';
+import { useAdminModuleSettings } from '@/hooks/useModuleSettings';
 import { toast } from 'sonner';
-import { Percent, Save, RefreshCw, Truck, CreditCard, Layers, Globe, CheckCircle, XCircle, Star } from 'lucide-react';
+import { Percent, Save, RefreshCw, Truck, CreditCard, Layers, Globe, CheckCircle, XCircle, Star, ToggleLeft } from 'lucide-react';
 
 const PRESET_RATES = [0, 5, 12, 18, 28];
 
@@ -210,6 +211,22 @@ export default function AdminSettingsPage() {
     shipFreeAbove !== (shippingConfig?.freeAbove != null ? String(shippingConfig.freeAbove) : '') ||
     shipDaysMin !== (shippingConfig?.estimatedDaysMin != null ? String(shippingConfig.estimatedDaysMin) : '') ||
     shipDaysMax !== (shippingConfig?.estimatedDaysMax != null ? String(shippingConfig.estimatedDaysMax) : '');
+
+  // ── Module Visibility ───────────────────────────────────────────────────────
+  const { data: moduleSettings, isLoading: moduleSettingsLoading } = useAdminModuleSettings();
+
+  const updateModuleSetting = useMutation({
+    mutationFn: ({ moduleKey, isEnabled }: { moduleKey: string; isEnabled: boolean }) =>
+      apiPatch(`/module-settings/admin/${moduleKey}`, { isEnabled }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['adminModuleSettings'] });
+      queryClient.invalidateQueries({ queryKey: ['publicModuleFlags'] });
+      toast.success('Module visibility updated');
+    },
+    onError: (err: any) => toast.error(err?.response?.data?.message || 'Failed to update module visibility'),
+  });
+
+  const PUBLIC_GATED_MODULES = ['blog', 'catalogue'];
 
   const INPUT = 'w-full h-12 px-4 rounded-xl border border-slate-200 text-slate-900 font-semibold text-sm focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary transition-all bg-white';
 
@@ -775,6 +792,48 @@ export default function AdminSettingsPage() {
                 </button>
               </div>
             </>
+          )}
+        </div>
+      </div>
+
+      {/* ── Module Visibility Card ─────────────────────────────────────────────── */}
+      <div className="bg-white rounded-3xl border border-slate-100 shadow-sm overflow-hidden">
+        <div className="p-6 sm:p-8 border-b border-slate-100 bg-slate-50/50 flex items-center gap-4">
+          <div className="p-3 bg-slate-100 rounded-2xl">
+            <ToggleLeft className="h-5 w-5 text-slate-600" />
+          </div>
+          <div>
+            <h2 className="text-xl font-black text-slate-900">Module Visibility</h2>
+            <p className="text-sm text-slate-500 font-medium mt-0.5">Show or hide sections of your store</p>
+          </div>
+        </div>
+
+        <div className="p-6 sm:p-8 space-y-1">
+          {moduleSettingsLoading ? (
+            <div className="h-12 bg-slate-100 rounded-xl animate-pulse" />
+          ) : (
+            (moduleSettings || []).map((m) => (
+              <div key={m.moduleKey} className="flex items-center justify-between gap-3 py-3 border-b border-slate-50 last:border-0">
+                <div>
+                  <p className="text-sm font-bold text-slate-800">{m.label}</p>
+                  <p className="text-xs text-slate-400 font-medium mt-0.5">
+                    {PUBLIC_GATED_MODULES.includes(m.moduleKey)
+                      ? `Turning this off hides "${m.label}" from the admin menu and the public website (its pages return 404).`
+                      : `Turning this off hides "${m.label}" from the admin menu only.`}
+                  </p>
+                </div>
+                <label className="relative inline-flex items-center cursor-pointer shrink-0">
+                  <input
+                    type="checkbox"
+                    checked={m.isEnabled}
+                    onChange={(e) => updateModuleSetting.mutate({ moduleKey: m.moduleKey, isEnabled: e.target.checked })}
+                    disabled={updateModuleSetting.isPending}
+                    className="sr-only peer"
+                  />
+                  <div className="w-11 h-6 bg-slate-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-emerald-600 peer-disabled:opacity-50" />
+                </label>
+              </div>
+            ))
           )}
         </div>
       </div>

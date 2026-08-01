@@ -1,7 +1,9 @@
 import type { Metadata } from 'next';
 import { Suspense } from 'react';
+import { notFound } from 'next/navigation';
 import { Loader2 } from 'lucide-react';
 import { BRAND } from '@/config/brand';
+import { getPublicModuleFlags } from '@/utils/moduleFlags';
 import CatalogueClient from './CatalogueClient';
 
 const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000/api/v1';
@@ -69,6 +71,9 @@ export async function generateMetadata(): Promise<Metadata> {
 }
 
 export default async function CataloguePage() {
+  const flags = await getPublicModuleFlags();
+  if (!flags.catalogue) notFound();
+
   const [categories, items] = await Promise.all([fetchCategories(), fetchCatalogueItems()]);
 
   const itemsByCategory: Record<string, any[]> = {};

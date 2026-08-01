@@ -1,5 +1,6 @@
 import type { MetadataRoute } from 'next';
 import { BRAND } from '@/config/brand';
+import { getPublicModuleFlags } from '@/utils/moduleFlags';
 
 const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000/api/v1';
 const SITE_URL = `https://${BRAND.domain}`;
@@ -86,18 +87,20 @@ async function fetchCategorySlugs() {
 }
 
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
+  const flags = await getPublicModuleFlags();
+
   const [products, categorySlugs, blogPosts, catalogueItems] = await Promise.all([
     fetchAllProducts(),
     fetchCategorySlugs(),
-    fetchBlogPosts(),
-    fetchCatalogueItems(),
+    flags.blog !== false ? fetchBlogPosts() : Promise.resolve([]),
+    flags.catalogue !== false ? fetchCatalogueItems() : Promise.resolve([]),
   ]);
 
   const staticRoutes: MetadataRoute.Sitemap = [
     { url: `${SITE_URL}/`, changeFrequency: 'daily', priority: 1 },
     { url: `${SITE_URL}/products`, changeFrequency: 'daily', priority: 0.9 },
-    { url: `${SITE_URL}/catalogue`, changeFrequency: 'weekly', priority: 0.8 },
-    { url: `${SITE_URL}/blog`, changeFrequency: 'daily', priority: 0.8 },
+    ...(flags.catalogue !== false ? [{ url: `${SITE_URL}/catalogue`, changeFrequency: 'weekly' as const, priority: 0.8 }] : []),
+    ...(flags.blog !== false ? [{ url: `${SITE_URL}/blog`, changeFrequency: 'daily' as const, priority: 0.8 }] : []),
   ];
 
   const blogRoutes: MetadataRoute.Sitemap = blogPosts.map((p) => ({

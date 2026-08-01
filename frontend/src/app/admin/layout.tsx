@@ -9,6 +9,7 @@ import {
 import { useState, useEffect } from 'react';
 import { useAuthStore } from '@/store/authStore';
 import { toast } from 'sonner';
+import { useAdminModuleSettings } from '@/hooks/useModuleSettings';
 
 function getRolesFromToken(token: string): string[] {
   try {
@@ -30,12 +31,12 @@ const NAV_SECTIONS = [
       { href: '/admin/products',   label: 'Products',   icon: ShoppingBag },
       { href: '/admin/categories', label: 'Categories', icon: Tag },
       { href: '/admin/orders',     label: 'Orders',     icon: ListOrdered },
-      { href: '/admin/reviews',    label: 'Reviews',    icon: MessageSquareText },
-      { href: '/admin/blog',       label: 'Blog',       icon: Newspaper },
-      { href: '/admin/catalogue-items', label: 'Catalogue Items', icon: LayoutGrid },
-      { href: '/admin/catalogue-enquiries', label: 'Catalogue Enquiries', icon: ClipboardList },
+      { href: '/admin/reviews',    label: 'Reviews',    icon: MessageSquareText, moduleKey: 'reviews' },
+      { href: '/admin/blog',       label: 'Blog',       icon: Newspaper, moduleKey: 'blog' },
+      { href: '/admin/catalogue-items', label: 'Catalogue Items', icon: LayoutGrid, moduleKey: 'catalogue' },
+      { href: '/admin/catalogue-enquiries', label: 'Catalogue Enquiries', icon: ClipboardList, moduleKey: 'catalogue' },
       { href: '/admin/users',      label: 'Users',      icon: Users },
-      { href: '/admin/coupons',    label: 'Coupons',    icon: TicketPercent },
+      { href: '/admin/coupons',    label: 'Coupons',    icon: TicketPercent, moduleKey: 'coupons' },
     ],
   },
   {
@@ -75,6 +76,15 @@ function NavItem({ href, label, icon: Icon, exact, pathname, onClick }: any) {
 }
 
 function SidebarContent({ pathname, onNav, displayName, initials, roleLabel, onLogout }: any) {
+  const { data: moduleSettings } = useAdminModuleSettings();
+  // While settings haven't loaded yet, show everything rather than flashing a shrinking sidebar
+  const isModuleEnabled = (moduleKey?: string) => {
+    if (!moduleKey) return true;
+    if (!moduleSettings) return true;
+    const setting = moduleSettings.find((s) => s.moduleKey === moduleKey);
+    return setting ? setting.isEnabled : true;
+  };
+
   return (
     <div className="flex flex-col h-full">
 
@@ -99,14 +109,16 @@ function SidebarContent({ pathname, onNav, displayName, initials, roleLabel, onL
               </p>
             )}
             <div className="space-y-0.5">
-              {section.items.map(item => (
-                <NavItem
-                  key={item.href}
-                  {...item}
-                  pathname={pathname}
-                  onClick={onNav}
-                />
-              ))}
+              {section.items
+                .filter((item: any) => isModuleEnabled(item.moduleKey))
+                .map(item => (
+                  <NavItem
+                    key={item.href}
+                    {...item}
+                    pathname={pathname}
+                    onClick={onNav}
+                  />
+                ))}
             </div>
           </div>
         ))}

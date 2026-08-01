@@ -1,9 +1,13 @@
+'use client';
+
 import Link from 'next/link';
 import { Phone, Mail, MapPin } from 'lucide-react';
 import { BRAND } from '@/config/brand';
+import { usePublicModuleFlags } from '@/hooks/useModuleSettings';
 
 export function Footer() {
   const year = new Date().getFullYear();
+  const { data: moduleFlags } = usePublicModuleFlags();
 
   return (
     <footer id="contact" className="bg-gray-900 text-gray-300">
@@ -51,16 +55,20 @@ export function Footer() {
                   All Products
                 </Link>
               </li>
-              <li>
-                <Link href="/catalogue" className="text-gray-400 hover:text-white transition-colors">
-                  Catalogue
-                </Link>
-              </li>
-              <li>
-                <Link href="/blog" className="text-gray-400 hover:text-white transition-colors">
-                  Blog
-                </Link>
-              </li>
+              {moduleFlags?.catalogue !== false && (
+                <li>
+                  <Link href="/catalogue" className="text-gray-400 hover:text-white transition-colors">
+                    Catalogue
+                  </Link>
+                </li>
+              )}
+              {moduleFlags?.blog !== false && (
+                <li>
+                  <Link href="/blog" className="text-gray-400 hover:text-white transition-colors">
+                    Blog
+                  </Link>
+                </li>
+              )}
               <li>
                 <Link href="/cart" className="text-gray-400 hover:text-white transition-colors">
                   Cart

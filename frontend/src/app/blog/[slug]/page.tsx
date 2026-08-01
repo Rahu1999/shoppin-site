@@ -2,6 +2,7 @@ import type { Metadata } from 'next';
 import { notFound } from 'next/navigation';
 import DOMPurify from 'isomorphic-dompurify';
 import { BRAND } from '@/config/brand';
+import { getPublicModuleFlags } from '@/utils/moduleFlags';
 
 const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000/api/v1';
 
@@ -58,6 +59,9 @@ export default async function BlogPostPage({
 }: {
   params: Promise<{ slug: string }>;
 }) {
+  const flags = await getPublicModuleFlags();
+  if (!flags.blog) notFound();
+
   const { slug } = await params;
   const post = await getPost(slug);
 
