@@ -1,5 +1,5 @@
 import { sendMail } from '@utils/emailService';
-import { welcomeEmail, orderConfirmationEmail, passwordResetEmail, adminNewOrderEmail } from '@utils/emailTemplates';
+import { welcomeEmail, orderConfirmationEmail, passwordResetEmail, adminNewOrderEmail, adminNewEnquiryEmail } from '@utils/emailTemplates';
 import { logger } from '../config/logger';
 import { env } from '@config/env';
 
@@ -71,6 +71,29 @@ export class EmailJobs {
       return true;
     } catch (e) {
       logger.error(`[EmailJobs] sendAdminNewOrderNotification failed:`, e);
+      return false;
+    }
+  }
+
+  static async sendAdminNewEnquiryNotification(opts: {
+    enquiryId: string;
+    itemName: string;
+    customerName: string;
+    customerPhone: string;
+    customerEmail?: string;
+    message: string;
+  }) {
+    const adminEmail = env.ADMIN_EMAIL;
+    if (!adminEmail) {
+      logger.warn('[EmailJobs] ADMIN_EMAIL not set — skipping admin enquiry notification');
+      return false;
+    }
+    try {
+      const tpl = adminNewEnquiryEmail(opts);
+      await sendMail({ to: adminEmail, subject: tpl.subject, html: tpl.html });
+      return true;
+    } catch (e) {
+      logger.error(`[EmailJobs] sendAdminNewEnquiryNotification failed:`, e);
       return false;
     }
   }

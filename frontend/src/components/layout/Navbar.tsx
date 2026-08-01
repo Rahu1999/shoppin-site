@@ -63,6 +63,7 @@ export function Navbar() {
   const coreLinks = [
     { href: '/', label: 'Home' },
     { href: '/products', label: 'Products' },
+    { href: '/catalogue', label: 'Catalogue' },
     { href: '/blog', label: 'Blog' },
     { href: '/#contact', label: 'Contact' },
   ];

@@ -52,6 +52,18 @@ async function fetchBlogPosts() {
   return posts;
 }
 
+async function fetchCatalogueItems() {
+  try {
+    const res = await fetch(`${API_BASE}/catalogue-items`, { next: { revalidate: 3600 } });
+    if (!res.ok) return [];
+    const json = await res.json();
+    const items = json.data || json;
+    return (Array.isArray(items) ? items : []) as { slug: string; updatedAt?: string }[];
+  } catch {
+    return [];
+  }
+}
+
 async function fetchCategorySlugs() {
   try {
     const res = await fetch(`${API_BASE}/categories/tree`, { next: { revalidate: 3600 } });
@@ -74,15 +86,17 @@ async function fetchCategorySlugs() {
 }
 
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
-  const [products, categorySlugs, blogPosts] = await Promise.all([
+  const [products, categorySlugs, blogPosts, catalogueItems] = await Promise.all([
     fetchAllProducts(),
     fetchCategorySlugs(),
     fetchBlogPosts(),
+    fetchCatalogueItems(),
   ]);
 
   const staticRoutes: MetadataRoute.Sitemap = [
     { url: `${SITE_URL}/`, changeFrequency: 'daily', priority: 1 },
     { url: `${SITE_URL}/products`, changeFrequency: 'daily', priority: 0.9 },
+    { url: `${SITE_URL}/catalogue`, changeFrequency: 'weekly', priority: 0.8 },
     { url: `${SITE_URL}/blog`, changeFrequency: 'daily', priority: 0.8 },
   ];
 
@@ -106,5 +120,12 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     priority: 0.8,
   }));
 
-  return [...staticRoutes, ...categoryRoutes, ...productRoutes, ...blogRoutes];
+  const catalogueRoutes: MetadataRoute.Sitemap = catalogueItems.map((item) => ({
+    url: `${SITE_URL}/catalogue/${encodeURIComponent(item.slug)}`,
+    lastModified: item.updatedAt ? new Date(item.updatedAt) : undefined,
+    changeFrequency: 'weekly',
+    priority: 0.7,
+  }));
+
+  return [...staticRoutes, ...categoryRoutes, ...productRoutes, ...catalogueRoutes, ...blogRoutes];
 }

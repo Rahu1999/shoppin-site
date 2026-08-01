@@ -137,3 +137,5 @@ backend/build/
 # Uploads
 backend/uploads/
 backend/public/uploads/
+
+blog

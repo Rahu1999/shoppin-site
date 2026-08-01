@@ -517,3 +517,36 @@ export function passwordResetEmail(opts: {
     `),
   };
 }
+
+export function adminNewEnquiryEmail(opts: {
+  enquiryId: string;
+  itemName: string;
+  customerName: string;
+  customerPhone: string;
+  customerEmail?: string;
+  message: string;
+}): { subject: string; html: string } {
+  const { enquiryId, itemName, customerName, customerPhone, customerEmail, message } = opts;
+  const shortId = enquiryId.slice(0, 8).toUpperCase();
+
+  return {
+    subject: `📋 New Catalogue Enquiry — ${itemName}`,
+    html: baseLayout(`New Enquiry #${shortId}`, `
+      <div style="background:#eff6ff;border:1px solid #bfdbfe;border-radius:8px;padding:16px 20px;margin-bottom:28px;">
+        <p style="margin:0;font-weight:900;color:#1e40af;font-size:16px;">📋 New Custom Order Enquiry!</p>
+        <p style="margin:6px 0 0;color:#1e40af;font-size:13px;">Enquiry <strong>#${shortId}</strong> · ${itemName}</p>
+      </div>
+
+      <div style="background:#f8fafc;border-radius:8px;padding:16px 20px;margin-bottom:20px;">
+        <p style="margin:0 0 4px;font-size:12px;color:#888;font-weight:700;text-transform:uppercase;letter-spacing:1px;">Customer</p>
+        <p style="margin:0;color:#1a1a2e;font-size:15px;font-weight:700;">${customerName}</p>
+        <p style="margin:2px 0 0;color:#555;font-size:13px;">${customerPhone}${customerEmail ? ` · ${customerEmail}` : ''}</p>
+      </div>
+
+      <div style="background:#f8fafc;border-radius:8px;padding:16px 20px;">
+        <p style="margin:0 0 4px;font-size:12px;color:#888;font-weight:700;text-transform:uppercase;letter-spacing:1px;">Message</p>
+        <p style="margin:0;color:#333;font-size:14px;line-height:1.6;white-space:pre-wrap;">${message}</p>
+      </div>
+    `),
+  };
+}
